@@ -1,8 +1,8 @@
-/* LecoLista · Service Worker
+/* HSH Mercado · Service Worker
  * Estratégia: cache-first para o app shell, network-first para o resto.
  * Versionar CACHE para invalidar em deploys (bumpe a cada release que muda assets).
  */
-const CACHE = 'lecolista-v5';
+const CACHE = 'lecolista-v6';
 const SHELL = [
   './',
   './index.html',

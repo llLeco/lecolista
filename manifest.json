@@ -1,6 +1,6 @@
 {
-  "name": "LecoLista",
-  "short_name": "LecoLista",
+  "name": "HSH Mercado",
+  "short_name": "HSH Mercado",
   "description": "Lista de compras, estoque e IA preditiva para a família — funciona offline.",
   "start_url": "./",
   "scope": "./",

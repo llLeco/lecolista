@@ -1,5 +1,6 @@
 /* =============================================================
- * LecoLista · App funcional, offline-first, em Português (pt-BR)
+ * HSH Mercado · App funcional, offline-first, em Português (pt-BR)
+ * (id interno técnico: "lecolista" — mantido em paths, BroadcastChannel, debug surface)
  *
  * Camadas:
  *   1. Helpers (DOM, datas, escape, debounce)
@@ -906,7 +907,7 @@
     const groups = groupByAisle(pendentes);
     const today = fmtPt(now(), { day: '2-digit', month: 'long', year: 'numeric' });
     const { total, count } = listTotal();
-    let out = `LecoLista — ${today}\n`;
+    let out = `HSH Mercado — ${today}\n`;
     out += `${pendentes.length} ${pendentes.length === 1 ? 'item' : 'itens'} pendentes`;
     if (count) out += ` · estimativa ${fmtBRL(total)}`;
     out += '\n\n';
@@ -954,7 +955,7 @@
     }
     const fields = ['items', 'inventory', 'recurring', 'family', 'history', 'prices'];
     if (!fields.some((f) => Array.isArray(data[f]))) {
-      toast('Arquivo não parece um backup do LecoLista');
+      toast('Arquivo não parece um backup do HSH Mercado');
       return;
     }
 
@@ -997,7 +998,7 @@
   }
   function shareList() {
     const t = listAsText();
-    if (navigator.share) navigator.share({ title: 'Lista LecoLista', text: t }).catch(()=>{});
+    if (navigator.share) navigator.share({ title: 'Lista · HSH Mercado', text: t }).catch(()=>{});
     else copyList();
   }
   function printList() { window.print(); }
@@ -1187,7 +1188,7 @@
     return `
       <header class="hdr">
         <div class="hdr__left">
-          <span class="hdr__logo">L</span>
+          <span class="hdr__logo">H</span>
           <div>
             <h1 class="hdr__title">Lista<span class="hdr__dot">.</span></h1>
             <p class="hdr__sub">${todayStr} · ${pendentes.length === 0 ? 'tudo comprado' : `${pendentes.length} ${pendentes.length === 1 ? 'pendente' : 'pendentes'}`}</p>
@@ -1550,7 +1551,7 @@
     }
 
     return sheetShell('Receitas', `
-      <p style="color:var(--ink-3);font-size:13.5px;margin:0 0 14px">Escolha uma receita. A LecoLista checa o estoque e adiciona o que falta na lista.</p>
+      <p style="color:var(--ink-3);font-size:13.5px;margin:0 0 14px">Escolha uma receita. O HSH Mercado checa o estoque e adiciona o que falta na lista.</p>
       <div class="recipe-grid">
         ${RECIPES.map((r) => {
           const missing = recipeMissing(r);
@@ -1677,7 +1678,7 @@
       <section class="card" style="padding:18px;margin-top:18px">
         <h3 style="font-family:var(--font-display);font-size:24px;margin:0 0 8px">Sobre o app</h3>
         <p style="color:var(--ink-2);margin:0 0 12px;line-height:1.5">
-          A LecoLista funciona <strong>offline</strong>: tudo o que você adiciona fica salvo no dispositivo e
+          O HSH Mercado funciona <strong>offline</strong>: tudo o que você adiciona fica salvo no dispositivo e
           sincroniza entre as abas abertas pelo BroadcastChannel. Para sincronizar entre dispositivos diferentes,
           é preciso conectar a uma conta na nuvem (próximo passo).
         </p>
@@ -2075,8 +2076,8 @@
     return `
       <div class="welcome">
         <div class="welcome__brand">
-          <span class="welcome__logo">L</span>
-          <h1 class="welcome__title">LecoLista<span class="welcome__dot">.</span></h1>
+          <span class="welcome__logo">H</span>
+          <h1 class="welcome__title">HSH Mercado<span class="welcome__dot">.</span></h1>
         </div>
         <p class="welcome__lead">A lista de compras da família — funciona offline, com voz, câmera, estoque e IA preditiva.</p>
 
@@ -2372,7 +2373,7 @@
       case 'undo':         await doUndo(); break;
       case 'install-pwa':  await promptInstall(); break;
       case 'enable-notifs': await enableNotifs(); break;
-      case 'test-notif':    showNotif('LecoLista funcionando', 'As notificações estão ativadas.'); break;
+      case 'test-notif':    showNotif('HSH Mercado funcionando', 'As notificações estão ativadas.'); break;
       case 'toggle-theme':  await toggleTheme(); break;
       case 'start-shopping': setState({ sheet: null }); await startShopping(); break;
       case 'exit-shopping':  await stopShopping(); break;
