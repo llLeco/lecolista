@@ -7,7 +7,10 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Conteúdo estático
 WORKDIR /usr/share/nginx/html
-COPY index.html app.js styles.css sw.js manifest.json icon.svg canvas.html ./
+COPY index.html app.js styles.css sw.js manifest.json canvas.html ./
+COPY icon.svg icon-180.png icon-192.png icon-512.png apple-touch-icon.png ./
+COPY robots.txt sitemap.xml ./
+COPY vendor ./vendor
 
 # Healthcheck simples
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

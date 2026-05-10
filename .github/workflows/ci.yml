@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Validate · sintaxe / docker build / HTML
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node — syntax check de app.js e sw.js
+        run: |
+          node --check app.js
+          node --check sw.js
+          echo "✓ JS syntax OK"
+
+      - name: HTML — checagem básica
+        run: |
+          # Garante que o index.html não tem tags abertas óbvias
+          python3 -c "
+          from html.parser import HTMLParser
+          import sys
+          class V(HTMLParser):
+              def __init__(s): super().__init__(); s.stack=[]; s.bad=False
+              def handle_starttag(s,t,a):
+                  if t not in ('meta','link','br','hr','img','input','source','use','path','rect','circle','symbol','svg','use','defs'):
+                      s.stack.append(t)
+              def handle_endtag(s,t):
+                  if s.stack and s.stack[-1]==t: s.stack.pop()
+                  elif s.stack:
+                      print(f'mismatch: closing {t} but stack top is {s.stack[-1]!r}'); s.bad=True
+          v=V(); v.feed(open('index.html').read())
+          if v.bad or v.stack: print('STACK LEAK:', v.stack); sys.exit(1)
+          print('✓ HTML OK')
+          "
+
+      - name: JSON — manifest válido
+        run: |
+          python3 -m json.tool manifest.json > /dev/null
+          echo "✓ manifest.json OK"
+
+      - name: Docker — build da imagem (qemu p/ ARM64)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Docker — buildx setup
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker — build linux/arm64
+        run: |
+          docker buildx build --platform linux/arm64 -t lecolista:ci .
+          echo "✓ Imagem ARM64 build OK"

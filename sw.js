@@ -1,8 +1,8 @@
 /* LecoLista · Service Worker
  * Estratégia: cache-first para o app shell, network-first para o resto.
- * Versionar CACHE para invalidar em deploys.
+ * Versionar CACHE para invalidar em deploys (bumpe a cada release que muda assets).
  */
-const CACHE = 'lecolista-v2';
+const CACHE = 'lecolista-v3';
 const SHELL = [
   './',
   './index.html',
@@ -11,6 +11,10 @@ const SHELL = [
   './app.js',
   './manifest.json',
   './icon.svg',
+  './icon-192.png',
+  './icon-512.png',
+  './apple-touch-icon.png',
+  './vendor/zxing.min.js',
   'https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap',
 ];
 

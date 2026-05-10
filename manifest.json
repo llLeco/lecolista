@@ -4,6 +4,7 @@
   "description": "Lista de compras, estoque e IA preditiva para a família — funciona offline.",
   "start_url": "./",
   "scope": "./",
+  "id": "br.devbyle.lecolista",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#f4efe6",
@@ -12,13 +13,17 @@
   "dir": "ltr",
   "categories": ["lifestyle", "productivity", "shopping"],
   "icons": [
-    { "src": "icon.svg", "sizes": "any",     "type": "image/svg+xml", "purpose": "any maskable" },
-    { "src": "icon.svg", "sizes": "192x192", "type": "image/svg+xml" },
-    { "src": "icon.svg", "sizes": "512x512", "type": "image/svg+xml" }
+    { "src": "icon.svg",       "sizes": "any",     "type": "image/svg+xml", "purpose": "any maskable" },
+    { "src": "icon-192.png",   "sizes": "192x192", "type": "image/png",     "purpose": "any" },
+    { "src": "icon-192.png",   "sizes": "192x192", "type": "image/png",     "purpose": "maskable" },
+    { "src": "icon-512.png",   "sizes": "512x512", "type": "image/png",     "purpose": "any" },
+    { "src": "icon-512.png",   "sizes": "512x512", "type": "image/png",     "purpose": "maskable" }
   ],
+  "screenshots": [],
   "shortcuts": [
     { "name": "Adicionar item",   "short_name": "Adicionar",  "url": "./?acao=adicionar", "description": "Adicionar item por voz, texto ou câmera" },
     { "name": "Lista atual",      "short_name": "Lista",      "url": "./?vista=lista" },
-    { "name": "Estoque da casa",  "short_name": "Estoque",    "url": "./?vista=estoque" }
+    { "name": "Estoque da casa",  "short_name": "Estoque",    "url": "./?vista=estoque" },
+    { "name": "Modo compras",     "short_name": "Compras",    "url": "./?vista=shopping", "description": "Tela cheia com botões grandes" }
   ]
 }

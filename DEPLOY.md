@@ -1,131 +1,210 @@
 # Deploy — LecoLista
 
 Roda como container Docker atrás do Traefik (Coolify) num Raspberry Pi 4, exposto
-via Cloudflare Tunnel em `https://lista.devbyle.co`.
+via Cloudflare Tunnel em <https://lista.devbyle.co>.
 
 ```
-Cliente → Cloudflare (TLS edge) → Tunnel → Pi:80 (HTTP)
-       → coolify-proxy (Traefik) → roteia por Host header
+Cliente → Cloudflare (TLS edge) → Tunnel (HTTPS, noTLSVerify)
+       → Traefik (coolify-proxy) → roteia por Host header
        → lecolista container (nginx:alpine + estáticos)
 ```
 
-## Setup atual (Raspberry Pi)
+## Status atual
 
-- **Caminho**: `/home/pi/lecolista` (clone deste repo)
-- **Rede Docker**: `coolify` (a mesma do `coolify-proxy` Traefik)
-- **Container**: `lecolista` (nginx-alpine, 76 MB, ARM64)
-- **Routing**: labels Traefik no `docker-compose.yml`
-  - HTTP `lista.devbyle.co` → middleware `lecolista-redir` → HTTPS 308
-  - HTTPS `lista.devbyle.co` → service `lecolista` (porta 80 interna)
+| Camada | Estado |
+|---|---|
+| Repo | <https://github.com/llLeco/lecolista> (público) |
+| Build | Docker via Coolify (`docker-compose.coolify.yml`) |
+| Pi | Raspberry Pi 4 · ARM64 · Debian 12 |
+| Container | `app-schn53nbgjm7ykgp78q1ok66-...` (gerenciado pelo Coolify, app ID 6) |
+| DNS | `lista.devbyle.co` → Cloudflare → tunnel `18099925-…` |
+| TLS | Cloudflare edge (Let's Encrypt no Traefik fica como fallback) |
+| CI | GitHub Actions valida sintaxe + build ARM64 a cada push |
 
-## Comandos no Pi
+## Atualizar o app (com webhook configurado)
 
 ```bash
-# Status
-ssh pi@raspberrypi.local "cd /home/pi/lecolista && sudo docker compose ps"
+# Da máquina dev — depois do passo 1 abaixo:
+git push origin main
+# → GitHub webhook → Coolify → rebuild → deploy (sem downtime)
+```
 
-# Logs (últimas 50 linhas)
-ssh pi@raspberrypi.local "sudo docker logs --tail 50 lecolista"
+Sem webhook ainda: depois do push, ir no Coolify UI → app → **Deploy**.
 
-# Logs do Traefik (rotas, certificados)
+## ⚠️ Passos manuais pendentes
+
+### 1. Webhook GitHub → Coolify (auto-deploy)
+
+Pré-requisito: Coolify acessível pela internet. Hoje só responde em
+`http://raspberrypi.local:8000` (rede local). Adicione ao Cloudflare Tunnel:
+
+a. **Cloudflare ZeroTrust → Networks → Tunnels → Configure → Public Hostnames → Add**
+
+```
+Subdomain:  coolify
+Domain:     devbyle.co
+Type:       HTTP
+URL:        localhost:8000
+HTTP Host Header: (vazio — o Coolify tem domínio próprio configurável depois)
+```
+
+(Opcional, mas recomendado: limitar acesso via Cloudflare Access — proteja
+`coolify.devbyle.co` com Google SSO).
+
+b. **No Coolify UI da aplicação `lecolista`**:
+- Aba **Webhooks** → copia o "Webhook Endpoint" (algo como
+  `https://coolify.devbyle.co/api/v1/deploy?uuid=schn…&force=false`)
+
+c. **GitHub repo settings**: <https://github.com/llLeco/lecolista/settings/hooks>
+- **Add webhook**
+- Payload URL: `<URL copiada do Coolify>`
+- Content type: `application/json`
+- SSL: Enable
+- Events: **Just the push event**
+- Active: ✓
+
+### 2. Cloudflare — HSTS + Security Headers
+
+Em <https://dash.cloudflare.com> → `devbyle.co` → **SSL/TLS → Edge Certificates**:
+
+- **Always Use HTTPS**: ON
+- **Min TLS Version**: TLS 1.2
+- **HSTS**: Enable
+  - Max-Age: 6 months
+  - Include subdomains: ON
+  - No-Sniff Header: ON
+
+Em **Rules → Transform Rules → Modify Response Header** → criar regra:
+
+```
+When incoming requests match: Hostname equals "lista.devbyle.co"
+
+Then:
+  Set static header:
+    X-Frame-Options = SAMEORIGIN
+    X-Content-Type-Options = nosniff
+    Referrer-Policy = strict-origin-when-cross-origin
+    Permissions-Policy = camera=(self), microphone=(self), geolocation=(), interest-cohort=()
+```
+
+(Esses headers já estão no `nginx.conf` mas Cloudflare costuma stripar — explicitar
+nas Transform Rules garante.)
+
+### 3. Cache Rules — invalidação de HTML
+
+Em **Rules → Cache Rules** → criar regra:
+
+```
+When incoming requests match:
+  (http.request.uri.path eq "/" or http.request.uri.path eq "/index.html"
+   or http.request.uri.path eq "/sw.js")
+
+Then:
+  Cache Eligibility: Bypass cache
+```
+
+E uma segunda regra pra extender cache de assets versionados:
+
+```
+When incoming requests match:
+  (http.request.uri.path matches ".*\\.(css|js)$"
+   and not http.request.uri.path eq "/sw.js")
+
+Then:
+  Cache Eligibility: Eligible for cache
+  Edge TTL: 5 minutes
+  Browser TTL: 5 minutes
+```
+
+### 4. Uptime monitoring (UptimeRobot, grátis)
+
+<https://uptimerobot.com> → New Monitor:
+- Type: HTTP(s)
+- URL: `https://lista.devbyle.co/healthz`
+- Interval: 5 min
+- Alerts: seu email / Slack / Telegram
+
+### 5. Backup Coolify (no Pi)
+
+Já existe em `scripts/backup-coolify.sh`. Instalar como cron:
+
+```bash
+ssh pi@raspberrypi.local
+sudo install -m 755 /home/pi/lecolista/scripts/backup-coolify.sh /usr/local/bin/coolify-backup
+sudo crontab -l 2>/dev/null | { cat; echo "0 3 * * *  /usr/local/bin/coolify-backup >> /var/log/coolify-backup.log 2>&1"; } | sudo crontab -
+# Roda já agora pra testar:
+sudo /usr/local/bin/coolify-backup
+ls -lh /home/pi/backups/coolify/
+```
+
+Faz backup de:
+- Postgres do Coolify (apps, deploys, settings)
+- `/data/coolify` (proxy config, ssl, ssh keys)
+
+Retenção: 14 dias. Restore: `pg_restore` + extrair tar.
+
+### 6. (Opcional) Sentry pra error tracking
+
+<https://sentry.io> conta free (5k events/mês). Adicionar no `index.html`:
+
+```html
+<script src="https://browser.sentry-cdn.com/<v>/bundle.min.js"></script>
+<script>Sentry.init({ dsn: 'https://<your-dsn>@sentry.io/<id>' });</script>
+```
+
+(Hoje erros JS morrem no console do cliente — você não vê.)
+
+## Estrutura de arquivos
+
+| Arquivo | Papel |
+|---|---|
+| `index.html`, `app.js`, `styles.css` | App PWA |
+| `sw.js` | Service Worker · **bumpe `CACHE = 'v…'` a cada release** |
+| `manifest.json` | PWA manifest |
+| `icon.svg`, `icon-{180,192,512}.png`, `apple-touch-icon.png` | Ícones |
+| `robots.txt`, `sitemap.xml` | SEO básico |
+| `vendor/zxing.min.js` | ZXing local (fallback iOS) |
+| `Dockerfile`, `nginx.conf` | Build do container |
+| `docker-compose.yml` | Para deploy manual standalone |
+| `docker-compose.coolify.yml` | Para deploy via Coolify (sem labels Traefik) |
+| `scripts/backup-coolify.sh` | Backup diário do Coolify |
+| `.github/workflows/ci.yml` | CI no GitHub |
+
+## Comandos comuns
+
+```bash
+# Logs do container (no Pi)
+ssh pi@raspberrypi.local "sudo docker ps --filter label=coolify.applicationId=6 -q | xargs sudo docker logs --tail 50"
+
+# Logs do Traefik
 ssh pi@raspberrypi.local "sudo docker logs --tail 30 coolify-proxy 2>&1 | grep -i lecolista"
 
-# Restart sem rebuild
-ssh pi@raspberrypi.local "cd /home/pi/lecolista && sudo docker compose restart"
+# Force redeploy via Coolify UI: clicar "Restart" ou "Deploy"
+
+# Cache purge no Cloudflare (após mudança grande):
+# Dashboard → devbyle.co → Caching → Configuration → Purge Everything
 ```
 
-## Atualizar o app (deploy)
+## Atualização de SW (cache busting)
 
-```bash
-# Da máquina dev:
-git push origin main
-
-# No Pi (manual até montar webhook no Coolify):
-ssh pi@raspberrypi.local "cd /home/pi/lecolista && git pull && sudo docker compose up -d --build"
-```
-
-## Cloudflare Tunnel — adicionar `lista.devbyle.co`
-
-Tunnel já existe (token-based, ID `18099925-f239-4fd5-b3a8-0ede922ca469`).
-Para expor um novo hostname:
-
-1. Acesse <https://one.dash.cloudflare.com>
-2. **Networks → Tunnels**, clique no tunnel ativo
-3. **Configure → Public Hostnames → + Add a public hostname**
-4. Preencha:
-   ```
-   Subdomain:  lista
-   Domain:     devbyle.co
-   Path:       (vazio)
-   Type:       HTTP
-   URL:        localhost:80
-   ```
-5. Em **Additional application settings → HTTP Settings**:
-   ```
-   HTTP Host Header:  lista.devbyle.co
-   ```
-   (sem isso, Traefik recebe `Host: localhost` e cai no 404 default)
-6. Save
-
-Cloudflare cria o DNS automaticamente. Em ~30s:
-
-```bash
-curl -I https://lista.devbyle.co/healthz   # → 200 OK
-```
-
-## Coolify (opcional — UI de gestão + auto-deploy)
-
-Hoje o app roda direto via `docker compose`. Para migrar pro Coolify e ganhar
-auto-deploy por webhook a cada `git push`:
-
-### 1. Parar o deploy manual no Pi
-
-```bash
-ssh pi@raspberrypi.local "cd /home/pi/lecolista && sudo docker compose down"
-```
-
-### 2. Criar a app no Coolify UI
-
-`http://raspberrypi.local:8000`
-
-- **+ New Resource → Public Repository**
-- **Repository URL**: `https://github.com/llLeco/lecolista`
-- **Branch**: `main`
-- **Build Pack**: Docker Compose
-- **Custom Docker Compose File**: `docker-compose.yml` (default)
-- **Base Directory**: `/`
-
-### 3. Configurar domínio
-
-Em **Configuration → Domains**:
-- `https://lista.devbyle.co`
-
-Coolify aplica suas próprias labels Traefik (use o compose como está). O cert
-Let's Encrypt vai resolver quando o DNS apontar.
-
-### 4. Webhook automático
-
-Em **Configuration → Webhooks** o Coolify gera uma URL. Adiciona em:
-
-`https://github.com/llLeco/lecolista/settings/hooks`
-
-→ Payload URL = URL do Coolify, Content type = `application/json`,
-events = `Just the push event`.
-
-Pronto: cada `git push origin main` redeploya automaticamente.
+A cada release que muda `app.js` ou `styles.css`:
+1. Bumpe `CACHE = 'lecolista-vN'` em `sw.js`
+2. Commit + push
+3. CI builda
+4. Coolify deploya
+5. SW novo detecta versão diferente, faz reload do cache
+6. Cloudflare Cache Rules já estão configuradas pra bypass `/`, `/index.html`, `/sw.js`
 
 ## Healthcheck e portas internas
 
-- `GET /healthz` → `200 ok` (não logado, baixo custo)
-- `EXPOSE 80` — Traefik atinge via rede `coolify` (`http://lecolista/`)
+- `GET /healthz` → `200 ok` (sem log)
+- `EXPOSE 80` — Traefik atinge via rede `coolify`
 - Sem portas publicadas no host (só Traefik fica em 80/443)
 
 ## Service Worker e PWA
 
 - `/sw.js` servido com `Cache-Control: no-cache, no-store, must-revalidate`
 - `Service-Worker-Allowed: /` (escopo raiz)
-- Manifest em `/manifest.json` com `start_url: ./` (funciona instalado)
-
-Cuidado ao atualizar: o SW antigo pode ficar cacheado no cliente. O CACHE
-versionado em `sw.js` (`lecolista-vN`) força refresh — bumpe a versão a cada
-deploy que muda assets.
+- Manifest em `/manifest.json` com `start_url: ./`
+- iOS: install via Safari → Compartilhar → Adicionar à Tela de Início (usa `apple-touch-icon.png`)
+- Android: install prompt via `beforeinstallprompt` (botão no menu ⋮ "Instalar app")

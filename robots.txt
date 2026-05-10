@@ -1,0 +1,7 @@
+# LecoLista — PWA pessoal, lista privada por dispositivo.
+# Indexação não traz valor (não tem conteúdo público), mas não há mal em permitir.
+User-agent: *
+Disallow: /sw.js
+Disallow: /manifest.json
+
+Sitemap: https://lista.devbyle.co/sitemap.xml

@@ -713,9 +713,13 @@
         }
       }
 
-      // 2) Fallback ZXing (Safari iOS, Firefox, etc.) — carrega sob demanda
+      // 2) Fallback ZXing (Safari iOS, Firefox, etc.) — vendor local + fallback CDN
       try {
-        await loadScript('https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js');
+        try {
+          await loadScript('./vendor/zxing.min.js');
+        } catch (_) {
+          await loadScript('https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js');
+        }
         if (!window.ZXing) throw new Error('ZXing não disponível');
         const reader = new window.ZXing.BrowserMultiFormatReader();
         // Já temos o stream; ZXing usa o videoEl direto
