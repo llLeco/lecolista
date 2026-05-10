@@ -44,6 +44,9 @@ jobs:
           python3 -m json.tool manifest.json > /dev/null
           echo "✓ manifest.json OK"
 
+      - name: Parser — smoke tests (parseInput + classifyAisle)
+        run: node tests/parser.test.js
+
       - name: Docker — build da imagem (qemu p/ ARM64)
         uses: docker/setup-qemu-action@v3
 

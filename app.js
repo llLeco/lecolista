@@ -79,8 +79,14 @@
   function classifyAisle(name) {
     const n = String(name || '').toLowerCase().trim();
     if (!n) return 'outros';
-    for (const a of AISLES) if (a.words.some((w) => n.includes(w))) return a.id;
-    return 'outros';
+    // Escolhe match mais longo (resolve casos como "fralda bebê" entre "fralda"=higiene e "fralda bebê"=bebê)
+    let bestId = null, bestLen = 0;
+    for (const a of AISLES) {
+      for (const w of a.words) {
+        if (n.includes(w) && w.length > bestLen) { bestId = a.id; bestLen = w.length; }
+      }
+    }
+    return bestId || 'outros';
   }
 
   // ────────────────────────────────────────────────────────────
@@ -88,15 +94,18 @@
   // ────────────────────────────────────────────────────────────
   const CMD_RE = /^(adicione|adicionar|adiciona|adicionando|colocar|coloca|comprar|compra|preciso de|precisamos de|preciso|me lembre de|lembrar de|lembrar|inclui|incluir|adicionar à lista|adicionar a lista|botar|por)\s+/i;
   const PRE_RE = /^(de|do|da|dos|das|para|pra)\s+/i;
-  const QTY_NUM = /^(\d+(?:[.,]\d+)?)\s*(kg|kilos?|gramas?|g|litros?|l|ml|un|und|unidade|unidades|pacote|pacotes|caixa|caixas|garrafa|garrafas|lata|latas|dúzia|duzia|cartela|saco|sacos|barra|barras|fatia|fatias|copo|copos|maço|maco|bandeja|bandejas)?\s+(.+)$/i;
+  const QTY_NUM = /^(\d+(?:[.,]\d+)?)\s*(kg|kilos?|gramas?|g|litros?|l|ml|un|und|unidade|unidades|pacote|pacotes|caixa|caixas|garrafa|garrafas|lata|latas|dúzia|duzia|dúzias|duzias|cartela|saco|sacos|barra|barras|fatia|fatias|copo|copos|maço|maco|bandeja|bandejas)?\s+(.+)$/i;
   const QTY_WORD = /^(uma|um|dois|duas|três|tres|quatro|cinco|seis|sete|oito|nove|dez|meia|meio)\s+(.+)$/i;
   const NUM_WORD = { uma: 1, um: 1, dois: 2, duas: 2, 'três': 3, tres: 3, quatro: 4, cinco: 5, seis: 6, sete: 7, oito: 8, nove: 9, dez: 10, meia: 0.5, meio: 0.5 };
+  // "(meia) dúzia de X" multiplica por 12. Trata também "dúzia"/"duzia" no início do nome.
+  const DOZEN_RE = /^(dúzias?|duzias?)\s+(de|dos?|das?)\s+(.+)$/i;
 
   function parseInput(raw) {
     if (!raw) return [];
     let text = String(raw).trim().replace(/\s+/g, ' ').replace(CMD_RE, '');
     text = text.replace(/\.$/, '').replace(/\s+e\s+também\s+/gi, ', ').replace(/\s+também\s+/gi, ', ').replace(/\s+e\s+/gi, ', ').replace(/\s+mais\s+/gi, ', ');
-    const parts = text.split(/\s*[,;]\s*|\s*\+\s*|\s*&\s*/).map((s) => s.trim()).filter(Boolean);
+    // Vírgula só separa itens se vier seguida de espaço (preserva vírgula decimal "1,5 L")
+    const parts = text.split(/\s*,\s+|\s*;\s*|\s*\+\s*|\s*&\s*/).map((s) => s.trim()).filter(Boolean);
     return parts.map(parsePart).filter(Boolean);
   }
 
@@ -106,14 +115,30 @@
     let m = trimmed.match(QTY_NUM);
     if (m) {
       const num = m[1].replace(',', '.');
-      const unit = (m[2] || 'un').toLowerCase().replace(/^kilos?$/, 'kg').replace(/^gramas?$/, 'g').replace(/^litros?$/, 'L').replace(/^unidades?$/, 'un').replace(/^und$/, 'un');
-      return { name: cap(m[3].trim()), qty: `${num} ${unit}` };
+      const unit = (m[2] || 'un').toLowerCase()
+        .replace(/^kilos?$/, 'kg').replace(/^gramas?$/, 'g')
+        .replace(/^l$|^litros?$/, 'L').replace(/^unidades?$/, 'un').replace(/^und$/, 'un')
+        .replace(/^dúzias?$|^duzias?$/, 'dz');
+      // Fix: remover "de/do/da" sobrando depois da extração de quantidade
+      let name = m[3].trim().replace(PRE_RE, '').trim();
+      return { name: cap(name), qty: `${num} ${unit}` };
     }
     m = trimmed.match(QTY_WORD);
     if (m) {
-      const num = NUM_WORD[m[1].toLowerCase()] || 1;
-      return { name: cap(m[2].trim()), qty: `${num} un` };
+      let num = NUM_WORD[m[1].toLowerCase()] || 1;
+      let rest = m[2].trim();
+      // Fix: "(meia|uma) dúzia de X" → multiplica por 12 e usa X como nome
+      const dz = rest.match(DOZEN_RE);
+      if (dz) {
+        num = num * 12;
+        rest = dz[3];
+      }
+      rest = rest.replace(PRE_RE, '').trim();
+      return { name: cap(rest), qty: `${num} un` };
     }
+    // "dúzia de X" sem número antes (assume 1 dúzia = 12)
+    const dz = trimmed.match(DOZEN_RE);
+    if (dz) return { name: cap(dz[3].replace(PRE_RE, '').trim()), qty: '12 un' };
     return { name: cap(trimmed), qty: '1 un' };
   }
 
