@@ -1,0 +1,21 @@
+# LecoLista — Compose para deploy gerenciado pelo Coolify v4.
+# Diferente do docker-compose.yml padrão, este NÃO tem labels Traefik nem
+# container_name — o Coolify gera tudo isso automaticamente baseado no
+# domínio que você define na UI.
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    expose:
+      - "80"
+    environment:
+      - TZ=America/Sao_Paulo
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
