@@ -2535,7 +2535,7 @@ input[type="range"].field__input { padding: 8px 0; }
 
 .hdr__title {
   font-family: var(--font-display);
-  font-size: 56px;
+  font-size: 48px;
   line-height: 0.96;
   letter-spacing: -0.015em;
   margin: 0;
@@ -2942,7 +2942,7 @@ input[type="range"].field__input { padding: 8px 0; }
   .page { padding: 18px 16px 80px; }
   .hdr { gap: 10px; margin-bottom: 16px; }
   .hdr__logo, .hdr__back, .hdr__more { width: 36px; height: 36px; margin-top: 2px; }
-  .hdr__title { font-size: 44px; }
+  .hdr__title { font-size: 36px; }
   .hdr__title--sub { font-size: 32px; }
   .hdr__sub { font-size: 12.5px; }
   .addbar { padding: 4px; }

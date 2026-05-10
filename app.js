@@ -1188,9 +1188,8 @@
     return `
       <header class="hdr">
         <div class="hdr__left">
-          <span class="hdr__logo">H</span>
           <div>
-            <h1 class="hdr__title">Lista<span class="hdr__dot">.</span></h1>
+            <h1 class="hdr__title">HSH Mercado<span class="hdr__dot">.</span></h1>
             <p class="hdr__sub">${todayStr} · ${pendentes.length === 0 ? 'tudo comprado' : `${pendentes.length} ${pendentes.length === 1 ? 'pendente' : 'pendentes'}`}</p>
           </div>
         </div>
