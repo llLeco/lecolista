@@ -234,24 +234,20 @@
     { name: 'Ovos',           qty: '12 un', cadenceDays: 10, day: 'sex', enabled: false },
   ];
 
-  async function seedIfEmpty() {
-    const fam = await dbAll('family');
-    if (!fam.length) for (const f of FAM_DEFAULTS) await dbPut('family', { ...f, createdAt: now() });
-    const items = await dbAll('items');
-    if (!items.length) {
-      for (const i of SEED_ITEMS) {
-        await dbPut('items', {
-          id: uid(), name: i.name, qty: i.qty, aisle: classifyAisle(i.name),
-          by: i.by, done: !!i.done, ai: i.ai || null, note: i.note || null,
-          addedAt: now() - Math.floor(Math.random() * 5) * 86400e3,
-          checkedAt: i.done ? now() - 86400e3 : null,
-        });
-      }
+  // Seed só roda em modo demo (flag passada em URL: ?demo=1).
+  // Por padrão, primeiro acesso vê tela de onboarding (sem família = vazio).
+  async function seedDemo() {
+    for (const f of FAM_DEFAULTS) await dbPut('family', { ...f, createdAt: now() });
+    for (const i of SEED_ITEMS) {
+      await dbPut('items', {
+        id: uid(), name: i.name, qty: i.qty, aisle: classifyAisle(i.name),
+        by: i.by, done: !!i.done, ai: i.ai || null, note: i.note || null,
+        addedAt: now() - Math.floor(Math.random() * 5) * 86400e3,
+        checkedAt: i.done ? now() - 86400e3 : null,
+      });
     }
-    const inv = await dbAll('inventory');
-    if (!inv.length) for (const i of SEED_INV) await dbPut('inventory', { id: uid(), ...i });
-    const rec = await dbAll('recurring');
-    if (!rec.length) for (const r of SEED_REC) await dbPut('recurring', { id: uid(), ...r });
+    for (const i of SEED_INV) await dbPut('inventory', { id: uid(), ...i });
+    for (const r of SEED_REC) await dbPut('recurring', { id: uid(), ...r });
   }
 
   // ────────────────────────────────────────────────────────────
@@ -406,18 +402,55 @@
     });
   }
 
-  async function addFamily(name) {
-    if (!name?.trim()) return;
+  // PIN: hash SHA-256 simples (não é proteção real — só evita criança trocar de usuário)
+  async function hashPin(pin) {
+    if (!pin || !String(pin).trim()) return null;
+    const enc = new TextEncoder().encode('lecolista:' + String(pin).trim());
+    const buf = await crypto.subtle.digest('SHA-256', enc);
+    return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+  }
+  async function verifyPin(memberId, pin) {
+    const f = state.family.find((x) => x.id === memberId);
+    if (!f) return false;
+    if (!f.pinHash) return true;
+    return (await hashPin(pin)) === f.pinHash;
+  }
+
+  async function addFamily(name, pin = null) {
+    if (!name?.trim()) return null;
     const palettes = [
       ['#d9b478','#b88e51'], ['#9bbfa7','#739a82'], ['#deae9a','#b48473'], ['#b4abc8','#8e85ad'],
       ['#a8c4d4','#779eb3'], ['#e0c4a8','#b08a6b'], ['#c8b894','#9e8a64'], ['#c5a9c1','#9b7f97'],
     ];
     const idx = state.family.length % palettes.length;
     let id = name.toLowerCase().replace(/[^a-zà-ú]/gi,'').slice(0,2);
-    if (!id || state.family.some(f => f.id === id)) id = uid().slice(0,3);
-    await dbPut('family', { id, name: cap(name.trim()), c1: palettes[idx][0], c2: palettes[idx][1], createdAt: now() });
+    if (!id || state.family.some((f) => f.id === id)) id = uid().slice(0,3);
+    const pinHash = await hashPin(pin);
+    const member = { id, name: cap(name.trim()), c1: palettes[idx][0], c2: palettes[idx][1], pinHash, createdAt: now() };
+    await dbPut('family', member);
     await loadAll();
     broadcast();
+    return member;
+  }
+
+  async function updateFamilyPin(memberId, newPin) {
+    const f = state.family.find((x) => x.id === memberId);
+    if (!f) return;
+    const pinHash = await hashPin(newPin);
+    await dbPut('family', { ...f, pinHash });
+    await loadAll();
+    broadcast();
+  }
+
+  async function wipeAll() {
+    for (const s of STORES) await dbClear(s);
+    await loadAll();
+    broadcast();
+    setState({
+      view: 'lista', sheet: null, sheetData: null, search: '',
+      showSug: false, showDone: false, currentUser: null,
+      voice: { listening: false, transcript: '', interim: '' },
+    });
   }
 
   async function removeFamily(id) {
@@ -1631,7 +1664,10 @@
               <p class="fam-card__meta">${state.items.filter(i=>i.by===f.id).length} itens · ${state.history.filter(h=>h.byId===f.id && h.action==='bought').length} comprados</p>
             </div>
             <div class="fam-card__actions">
-              ${state.currentUser !== f.id ? `<button class="btn btn--ghost btn--sm" data-act="set-user" data-id="${f.id}">Sou eu</button>` : `<span class="tag tag--ai">você</span>`}
+              ${state.currentUser !== f.id
+                ? `<button class="btn btn--ghost btn--sm" data-act="select-user" data-id="${f.id}">${f.pinHash ? '🔒 Entrar' : 'Sou eu'}</button>`
+                : `<span class="tag tag--ai">você</span>`}
+              <button class="icon-btn" data-act="set-pin" data-id="${f.id}" aria-label="${f.pinHash ? 'Trocar PIN' : 'Definir PIN'}" title="${f.pinHash ? 'Trocar PIN' : 'Definir PIN'}">${f.pinHash ? '🔒' : '🔓'}</button>
               ${state.family.length > 1 ? `<button class="icon-btn" data-act="remove-fam" data-id="${f.id}" aria-label="Remover">${icon('x', 14)}</button>` : ''}
             </div>
           </article>
@@ -1652,7 +1688,7 @@
         </div>
         <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
           <button class="btn btn--ghost btn--sm" data-act="export-json">${icon('arrow-r', 12)}<span>Backup (JSON)</span></button>
-          <button class="btn btn--ghost btn--sm" data-act="reset-all">${icon('x', 12)}<span>Limpar tudo</span></button>
+          <button class="btn btn--ghost btn--sm" data-act="wipe-all">${icon('x', 12)}<span>Limpar tudo</span></button>
           <a class="btn btn--ghost btn--sm" href="canvas.html" target="_blank" rel="noopener">${icon('chevron', 12)}<span>Ver design canvas</span></a>
         </div>
       </section>
@@ -1882,9 +1918,9 @@
     return sheetShell('Quem é você?', `
       <div class="user-grid">
         ${state.family.map((f) => `
-          <button class="user-tile ${state.currentUser === f.id ? 'user-tile--active' : ''}" data-act="set-user" data-id="${f.id}">
+          <button class="user-tile ${state.currentUser === f.id ? 'user-tile--active' : ''}" data-act="select-user" data-id="${f.id}">
             <span class="avatar" style="width:48px;height:48px;font-size:22px;background:linear-gradient(135deg, ${f.c1}, ${f.c2})">${escape(f.name.charAt(0).toUpperCase())}</span>
-            <span class="user-tile__name">${escape(f.name)}</span>
+            <span class="user-tile__name">${escape(f.name)}${f.pinHash ? ' 🔒' : ''}</span>
           </button>
         `).join('')}
       </div>
@@ -1892,8 +1928,58 @@
         <label class="field"><span class="field__label">Adicionar nova pessoa</span>
           <input class="field__input" name="name" placeholder="Nome" />
         </label>
+        <label class="field"><span class="field__label">PIN (4 dígitos · opcional)</span>
+          <input class="field__input" name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="—" />
+        </label>
         <div class="form-actions">
           <button type="submit" class="btn btn--ai btn--lg">${icon('plus', 14)}<span>Adicionar</span></button>
+        </div>
+      </form>
+    `);
+  }
+
+  function sheetPin() {
+    const id = state.sheetData?.targetId;
+    const f = state.family.find((x) => x.id === id);
+    if (!f) return sheetShell('—', '');
+    return sheetShell(`${f.name} · PIN`, `
+      <div class="pin-screen">
+        <span class="avatar" style="width:72px;height:72px;font-size:32px;background:linear-gradient(135deg, ${f.c1}, ${f.c2})">${escape(f.name.charAt(0).toUpperCase())}</span>
+        <p style="text-align:center;color:var(--ink-2);margin:14px 0 6px">Digite o PIN de <strong>${escape(f.name)}</strong>:</p>
+        <form data-form="pin-verify" data-id="${f.id}" class="add-form">
+          <input class="field__input pin-input" name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autofocus autocomplete="off" placeholder="—" style="font-size:32px;text-align:center;letter-spacing:0.4em;font-family:var(--font-mono)" />
+          ${state.sheetData?.error ? `<p style="color:var(--warn);font-size:13px;text-align:center;margin:0">PIN incorreto · tenta de novo</p>` : ''}
+          <div class="form-actions">
+            <button type="button" class="btn btn--ghost" data-act="close-sheet">Cancelar</button>
+            <button type="submit" class="btn btn--ai btn--lg">${icon('check', 14)}<span>Entrar</span></button>
+          </div>
+        </form>
+      </div>
+    `);
+  }
+
+  function sheetEditPin() {
+    const id = state.sheetData?.id;
+    const f = state.family.find((x) => x.id === id);
+    if (!f) return sheetShell('—', '');
+    return sheetShell(`${f.pinHash ? 'Trocar' : 'Definir'} PIN · ${f.name}`, `
+      <p style="color:var(--ink-2);font-size:14px;margin:0 0 14px">
+        ${f.pinHash
+          ? 'Digite o PIN atual e o novo. Pra remover o PIN, deixe o novo em branco.'
+          : 'PIN protege a troca pra esse perfil (útil em dispositivo compartilhado).'}
+      </p>
+      <form data-form="edit-pin" data-id="${f.id}" class="add-form">
+        ${f.pinHash ? `
+          <label class="field"><span class="field__label">PIN atual</span>
+            <input class="field__input" name="oldPin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required />
+          </label>
+        ` : ''}
+        <label class="field"><span class="field__label">Novo PIN (4 dígitos · vazio = remover)</span>
+          <input class="field__input" name="newPin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" />
+        </label>
+        <div class="form-actions">
+          <button type="button" class="btn btn--ghost" data-act="close-sheet">Cancelar</button>
+          <button type="submit" class="btn btn--ai btn--lg">${icon('check', 14)}<span>Salvar</span></button>
         </div>
       </form>
     `);
@@ -1972,13 +2058,46 @@
         <label class="field"><span class="field__label">Nome</span>
           <input class="field__input" name="name" required autofocus />
         </label>
-        <p class="field__hint">A LecoLista vai gerar uma cor única para o avatar.</p>
+        <label class="field"><span class="field__label">PIN (4 dígitos · opcional)</span>
+          <input class="field__input" name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="—" />
+          <span class="field__hint">Útil em dispositivo compartilhado (iPad da cozinha). Sem PIN, troca livre.</span>
+        </label>
         <div class="form-actions">
           <button type="button" class="btn btn--ghost" data-act="close-sheet">Cancelar</button>
           <button type="submit" class="btn btn--ai btn--lg">${icon('plus', 14)}<span>Adicionar</span></button>
         </div>
       </form>
     `);
+  }
+
+  // ── Tela de boas-vindas (sem perfis cadastrados) ─────────────
+  function viewWelcome() {
+    return `
+      <div class="welcome">
+        <div class="welcome__brand">
+          <span class="welcome__logo">L</span>
+          <h1 class="welcome__title">LecoLista<span class="welcome__dot">.</span></h1>
+        </div>
+        <p class="welcome__lead">A lista de compras da família — funciona offline, com voz, câmera, estoque e IA preditiva.</p>
+
+        <form class="welcome__form" data-form="onboard">
+          <label class="field">
+            <span class="field__label">Como vamos te chamar?</span>
+            <input class="field__input welcome__input" name="name" required autofocus autocomplete="given-name" placeholder="Seu nome" />
+          </label>
+          <label class="field">
+            <span class="field__label">PIN (4 dígitos · opcional)</span>
+            <input class="field__input" name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="—" />
+            <span class="field__hint">Em dispositivo compartilhado (iPad da cozinha), o PIN evita troca acidental de perfil. Pula se for celular pessoal.</span>
+          </label>
+          <button type="submit" class="btn btn--ai btn--lg welcome__cta">${icon('arrow-r', 16, { sw: 2 })}<span>Começar</span></button>
+        </form>
+
+        <div class="welcome__alt">
+          <button class="link-btn" data-act="load-demo">Carregar dados de exemplo →</button>
+        </div>
+      </div>
+    `;
   }
 
   function sheetPrice() {
@@ -2106,6 +2225,10 @@
         ${item('print-list',  null, 'receipt', 'Imprimir lista',          'Versão limpa pra papel ou PDF')}
       </div>
 
+      <div class="menu-list" style="margin-top:14px">
+        ${item('wipe-all', null, 'x', 'Apagar tudo', 'Volta pra tela de boas-vindas — sem volta')}
+      </div>
+
       <div class="menu-foot">
         <span class="status-pill ${state.online ? 'status-pill--ok' : 'status-pill--off'}">${state.online ? '● Online' : '◌ Offline'}</span>
         <a class="link-btn" href="canvas.html" target="_blank" rel="noopener">Ver design canvas →</a>
@@ -2137,6 +2260,15 @@
     const focus = document.activeElement?.dataset?.input;
     const sel = focus ? { start: document.activeElement.selectionStart, end: document.activeElement.selectionEnd } : null;
 
+    // Onboarding: sem famílias = tela de boas-vindas (pula tudo)
+    if (state.family.length === 0) {
+      root.innerHTML = `<main class="page">${viewWelcome()}</main>`;
+      renderToast();
+      const inp = root.querySelector('input[name="name"]');
+      if (inp) inp.focus();
+      return;
+    }
+
     const view =
       state.view === 'estoque' ? viewEstoque() :
       state.view === 'recorrentes' ? viewRecorrentes() :
@@ -2153,6 +2285,8 @@
       state.sheet === 'menu' ? sheetMenu() :
       state.sheet === 'price' ? sheetPrice() :
       state.sheet === 'recipes' ? sheetRecipes() :
+      state.sheet === 'pin' ? sheetPin() :
+      state.sheet === 'edit-pin' ? sheetEditPin() :
       state.sheet === 'inventory-edit' ? sheetInventoryEdit() :
       state.sheet === 'inventory-add' ? sheetInventoryAdd() :
       state.sheet === 'rec-add' ? sheetRecAdd() :
@@ -2373,14 +2507,36 @@
         searchExternal('ml', q || AISLE_LABELS[aid]);
         break;
       }
-      case 'reset-all':
-        if (confirm('Apagar TODOS os dados (lista, estoque, família, histórico)? Não há volta.')) {
-          for (const s of STORES) await dbClear(s);
-          await seedIfEmpty();
-          await loadAll();
-          toast('Tudo limpo. Reiniciando com dados de exemplo.');
+      case 'wipe-all':
+        if (confirm('Apagar TODOS os dados (lista, estoque, família, histórico, preços)?\n\nNão há volta. Vai voltar para a tela de boas-vindas.')) {
+          await wipeAll();
+          toast('Tudo limpo · começar do zero');
         }
         break;
+      case 'load-demo':
+        if (confirm('Carregar dados de exemplo (4 pessoas, lista, estoque)? Útil só pra testar.')) {
+          await seedDemo(); await loadAll();
+          if (!state.currentUser && state.family.length) setState({ currentUser: state.family[0].id });
+          toast('Dados de exemplo carregados');
+        }
+        break;
+      case 'select-user': {
+        // Trocar de usuário — pede PIN se o perfil tem um
+        const f = state.family.find((x) => x.id === id);
+        if (!f) break;
+        if (f.pinHash) {
+          setState({ sheet: 'pin', sheetData: { targetId: id } });
+        } else {
+          setState({ currentUser: id, sheet: null });
+          toast(`Você é ${f.name}`);
+        }
+        break;
+      }
+      case 'set-pin': {
+        // Abrir sheet pra setar/trocar PIN do perfil
+        setState({ sheet: 'edit-pin', sheetData: { id } });
+        break;
+      }
     }
   });
 
@@ -2417,7 +2573,54 @@
         toast('Item salvo');
         break;
       }
-      case 'add-family':   await addFamily(data.name); setState({ sheet: null }); break;
+      case 'add-family': {
+        const pin = (data.pin || '').trim();
+        if (pin && !/^\d{4}$/.test(pin)) { toast('PIN precisa ter 4 dígitos'); break; }
+        await addFamily(data.name, pin || null);
+        setState({ sheet: null });
+        break;
+      }
+      case 'onboard': {
+        const pin = (data.pin || '').trim();
+        if (pin && !/^\d{4}$/.test(pin)) { toast('PIN precisa ter 4 dígitos'); break; }
+        const m = await addFamily(data.name, pin || null);
+        if (m) {
+          setState({ currentUser: m.id });
+          toast(`Bem-vindo, ${m.name}! 👋`);
+        }
+        break;
+      }
+      case 'pin-verify': {
+        const targetId = form.dataset.id;
+        const ok = await verifyPin(targetId, data.pin);
+        if (ok) {
+          const f = state.family.find((x) => x.id === targetId);
+          setState({ currentUser: targetId, sheet: null, sheetData: null });
+          toast(`Você é ${f.name}`);
+        } else {
+          setState({ sheetData: { ...state.sheetData, error: true } });
+        }
+        break;
+      }
+      case 'edit-pin': {
+        const memberId = form.dataset.id;
+        const f = state.family.find((x) => x.id === memberId);
+        if (!f) break;
+        const oldPin = (data.oldPin || '').trim();
+        const newPin = (data.newPin || '').trim();
+        if (f.pinHash && !(await verifyPin(memberId, oldPin))) {
+          toast('PIN atual incorreto');
+          break;
+        }
+        if (newPin && !/^\d{4}$/.test(newPin)) {
+          toast('Novo PIN precisa ter 4 dígitos');
+          break;
+        }
+        await updateFamilyPin(memberId, newPin || null);
+        setState({ sheet: null, sheetData: null });
+        toast(newPin ? `PIN atualizado` : `PIN removido`);
+        break;
+      }
       case 'add-inv':      await addInv({ name: data.name, stock: (Number(data.stock) || 100) / 100, unit: data.unit, cadenceDays: Number(data.cadenceDays) || 14 }); setState({ sheet: null }); break;
       case 'edit-inv':     await updateInv(form.dataset.id, { stock: (Number(data.stock) || 0) / 100, cadenceDays: Number(data.cadenceDays) || 14, unit: data.unit }); setState({ sheet: null }); break;
       case 'add-rec':      await addRec({ name: data.name, qty: data.qty, cadenceDays: Number(data.cadenceDays) || 7 }); setState({ sheet: null }); break;
@@ -2527,7 +2730,6 @@
       navigator.serviceWorker.register('./sw.js').catch((e) => console.warn('SW falhou', e));
     }
 
-    await seedIfEmpty();
     await loadAll();
     await loadTheme();
 
@@ -2536,6 +2738,15 @@
     const v = qs.get('vista');
     if (v && ['lista','estoque','recorrentes','sugestoes','familia','shopping'].includes(v)) state.view = v;
     if (qs.get('acao') === 'adicionar') state.sheet = 'add', state.sheetData = { tab: 'voz' };
+
+    // Modo demo (?demo=1): popula dados de exemplo se banco vazio
+    if (qs.get('demo') === '1' && state.family.length === 0) {
+      await seedDemo();
+      await loadAll();
+    }
+
+    // Se não tem usuário atual mas tem família, usa o primeiro
+    if (!state.currentUser && state.family.length) state.currentUser = state.family[0].id;
 
     render();
 
