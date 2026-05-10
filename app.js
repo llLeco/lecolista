@@ -1194,9 +1194,9 @@
           </div>
         </div>
         <div class="hdr__right">
-          <button class="hdr__user" data-act="open-family" title="Trocar de usuário · ${escape(me?.name || '')}">
-            ${avatar(state.currentUser, 32)}
-          </button>
+          ${me
+            ? `<button class="hdr__user" data-act="open-family" title="Trocar de usuário · ${escape(me.name)}">${avatar(state.currentUser, 32)}</button>`
+            : `<button class="btn btn--ghost btn--sm" data-act="open-family">Entrar</button>`}
           <button class="hdr__more" data-act="open-menu" aria-label="Menu">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><circle cx="4" cy="10" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="16" cy="10" r="1.6"/></svg>
           </button>
