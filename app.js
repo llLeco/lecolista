@@ -2072,30 +2072,62 @@
 
   // ── Tela de boas-vindas (sem perfis cadastrados) ─────────────
   function viewWelcome() {
+    const hasFamily = state.family.length > 0;
     return `
       <div class="welcome">
         <div class="welcome__brand">
-          <span class="welcome__logo">H</span>
           <h1 class="welcome__title">HSH Mercado<span class="welcome__dot">.</span></h1>
         </div>
-        <p class="welcome__lead">A lista de compras da família — funciona offline, com voz, câmera, estoque e IA preditiva.</p>
+        <p class="welcome__lead">${hasFamily
+          ? 'Quem está usando agora?'
+          : 'A lista de compras da família — funciona offline, com voz, câmera, estoque e IA preditiva.'}</p>
 
-        <form class="welcome__form" data-form="onboard">
-          <label class="field">
-            <span class="field__label">Como vamos te chamar?</span>
-            <input class="field__input welcome__input" name="name" required autofocus autocomplete="given-name" placeholder="Seu nome" />
-          </label>
-          <label class="field">
-            <span class="field__label">PIN (4 dígitos · opcional)</span>
-            <input class="field__input" name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="—" />
-            <span class="field__hint">Em dispositivo compartilhado (iPad da cozinha), o PIN evita troca acidental de perfil. Pula se for celular pessoal.</span>
-          </label>
-          <button type="submit" class="btn btn--ai btn--lg welcome__cta">${icon('arrow-r', 16, { sw: 2 })}<span>Começar</span></button>
-        </form>
+        ${hasFamily ? `
+          <div class="welcome__profiles">
+            ${state.family.map((f) => `
+              <button class="profile-tile" data-act="select-user" data-id="${f.id}">
+                <span class="avatar profile-tile__avatar" style="background:linear-gradient(135deg, ${f.c1}, ${f.c2})">${escape(f.name.charAt(0).toUpperCase())}</span>
+                <span class="profile-tile__body">
+                  <span class="profile-tile__name">${escape(f.name)}</span>
+                  <span class="profile-tile__meta">${f.pinHash ? '🔒 PIN protegido' : 'Entrar'}</span>
+                </span>
+                ${icon('chevron', 14)}
+              </button>
+            `).join('')}
+          </div>
 
-        <div class="welcome__alt">
-          <button class="link-btn" data-act="load-demo">Carregar dados de exemplo →</button>
-        </div>
+          <details class="welcome__new">
+            <summary>+ Adicionar nova pessoa</summary>
+            <form class="welcome__form" data-form="onboard" style="margin-top:12px">
+              <label class="field">
+                <span class="field__label">Nome</span>
+                <input class="field__input welcome__input" name="name" required autocomplete="given-name" placeholder="Nome da nova pessoa" />
+              </label>
+              <label class="field">
+                <span class="field__label">PIN (4 dígitos · opcional)</span>
+                <input class="field__input" name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="—" />
+              </label>
+              <button type="submit" class="btn btn--ai btn--lg welcome__cta">${icon('plus', 16, { sw: 2 })}<span>Criar e entrar</span></button>
+            </form>
+          </details>
+        ` : `
+          <form class="welcome__form" data-form="onboard">
+            <label class="field">
+              <span class="field__label">Como vamos te chamar?</span>
+              <input class="field__input welcome__input" name="name" required autofocus autocomplete="given-name" placeholder="Seu nome" />
+            </label>
+            <label class="field">
+              <span class="field__label">PIN (4 dígitos · opcional)</span>
+              <input class="field__input" name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="—" />
+              <span class="field__hint">Em dispositivo compartilhado (iPad da cozinha), o PIN evita troca acidental de perfil. Pula se for celular pessoal.</span>
+            </label>
+            <button type="submit" class="btn btn--ai btn--lg welcome__cta">${icon('arrow-r', 16, { sw: 2 })}<span>Começar</span></button>
+          </form>
+
+          <div class="welcome__alt">
+            <button class="link-btn" data-act="load-demo">Carregar dados de exemplo →</button>
+          </div>
+        `}
       </div>
     `;
   }
@@ -2260,12 +2292,15 @@
     const focus = document.activeElement?.dataset?.input;
     const sel = focus ? { start: document.activeElement.selectionStart, end: document.activeElement.selectionEnd } : null;
 
-    // Onboarding: sem famílias = tela de boas-vindas (pula tudo)
-    if (state.family.length === 0) {
+    // Welcome / Login:
+    //   - family vazio → form criar primeiro perfil
+    //   - family populado mas sem currentUser válido → lista de perfis pra escolher
+    const validUser = state.currentUser && state.family.some((f) => f.id === state.currentUser);
+    if (state.family.length === 0 || !validUser) {
       root.innerHTML = `<main class="page">${viewWelcome()}</main>`;
       renderToast();
       const inp = root.querySelector('input[name="name"]');
-      if (inp) inp.focus();
+      if (inp && state.family.length === 0) inp.focus();
       return;
     }
 
