@@ -1,0 +1,53 @@
+# LecoLista — Compose para deploy no Raspberry Pi atrás do Traefik (Coolify)
+# Roda como serviço independente. Mesmo padrão de labels que lecome-web já usa.
+# Cloudflare faz TLS na borda; Traefik local também tem cert (Let's Encrypt).
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lecolista
+    image: lecolista:local
+    restart: unless-stopped
+    networks:
+      - coolify
+    expose:
+      - "80"
+    environment:
+      - TZ=America/Sao_Paulo
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    labels:
+      # Habilita Traefik
+      - "traefik.enable=true"
+      - "traefik.docker.network=coolify"
+
+      # Define middleware próprio (Coolify só cria 'redirect-to-https' pros apps que ele gerencia)
+      - "traefik.http.middlewares.lecolista-redir.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.lecolista-redir.redirectscheme.permanent=true"
+
+      # HTTP — redireciona pra HTTPS via middleware acima
+      - "traefik.http.routers.http-lecolista.entryPoints=http"
+      - "traefik.http.routers.http-lecolista.rule=Host(`lista.devbyle.co`)"
+      - "traefik.http.routers.http-lecolista.service=lecolista"
+      - "traefik.http.routers.http-lecolista.middlewares=lecolista-redir"
+
+      # HTTPS — gzip já é feito pelo nginx; sem TLS local (Cloudflare termina TLS na borda).
+      # Mantemos certresolver pra quando o domínio resolver (Let's Encrypt fica como bônus).
+      - "traefik.http.routers.https-lecolista.entryPoints=https"
+      - "traefik.http.routers.https-lecolista.rule=Host(`lista.devbyle.co`)"
+      - "traefik.http.routers.https-lecolista.service=lecolista"
+      - "traefik.http.routers.https-lecolista.tls=true"
+      - "traefik.http.routers.https-lecolista.tls.certresolver=letsencrypt"
+
+      # Service: aponta pra porta interna do nginx
+      - "traefik.http.services.lecolista.loadbalancer.server.port=80"
+
+networks:
+  coolify:
+    external: true

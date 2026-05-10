@@ -1,0 +1,1805 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LecoLista · Hi-Fi — Shopping List & Add Item</title>
+  <meta name="description" content="LecoLista — high-fidelity design canvas for an AI-assisted family shopping list. Two flows, two directions each, on iPad and iPhone." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- ============================================================
+     ICON DEFS — referenced via <use href="#ic-name"></use>
+     stroke=currentColor, fill=none by default; "filled" icons override
+     ============================================================ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="ic-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="ic-check" viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6"/></symbol>
+    <symbol id="ic-x" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></symbol>
+    <symbol id="ic-mic" viewBox="0 0 24 24">
+      <rect x="9" y="3" width="6" height="12" rx="3" fill="currentColor" stroke="none"/>
+      <path d="M5 11a7 7 0 0 0 14 0M12 18v3" fill="none"/>
+    </symbol>
+    <symbol id="ic-sparkle" viewBox="0 0 24 24">
+      <path d="M12 3l1.6 4.6L18 9l-4.4 1.4L12 15l-1.6-4.6L6 9l4.4-1.4z" fill="currentColor" stroke="none"/>
+      <path d="M19 16l.6 1.4L21 18l-1.4.6L19 20l-.6-1.4L17 18l1.4-.6z" fill="currentColor" stroke="none"/>
+    </symbol>
+    <symbol id="ic-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.3-4.3"/></symbol>
+    <symbol id="ic-scan" viewBox="0 0 24 24">
+      <path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/>
+      <path d="M4 12h16"/>
+    </symbol>
+    <symbol id="ic-camera" viewBox="0 0 24 24">
+      <path d="M3 8a2 2 0 0 1 2-2h2.5l1.5-2h6l1.5 2H19a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <circle cx="12" cy="13" r="3.5"/>
+    </symbol>
+    <symbol id="ic-receipt" viewBox="0 0 24 24">
+      <path d="M6 3h12v18l-2-1.5L14 21l-2-1.5L10 21l-2-1.5L6 21z"/>
+      <path d="M9 8h6M9 12h6M9 16h4"/>
+    </symbol>
+    <symbol id="ic-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="ic-chevron-d" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="ic-voice" viewBox="0 0 24 24"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></symbol>
+    <symbol id="ic-bag" viewBox="0 0 24 24">
+      <path d="M5 8h14l-1.2 11.2A2 2 0 0 1 15.8 21H8.2a2 2 0 0 1-2-1.8L5 8z"/>
+      <path d="M9 8V6a3 3 0 0 1 6 0v2"/>
+    </symbol>
+    <symbol id="ic-inventory" viewBox="0 0 24 24">
+      <rect x="3" y="4" width="18" height="16" rx="2"/>
+      <path d="M3 10h18M9 4v16"/>
+    </symbol>
+    <symbol id="ic-routines" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M12 7v5l3 2"/>
+    </symbol>
+    <symbol id="ic-sliders" viewBox="0 0 24 24">
+      <path d="M4 6h7M14 6h6M4 12h3M10 12h10M4 18h11M18 18h2"/>
+      <circle cx="12" cy="6" r="1.6" fill="currentColor"/>
+      <circle cx="8" cy="12" r="1.6" fill="currentColor"/>
+      <circle cx="16" cy="18" r="1.6" fill="currentColor"/>
+    </symbol>
+    <symbol id="ic-arrow-r" viewBox="0 0 24 24"><path d="M5 12h14M14 6l6 6-6 6"/></symbol>
+    <symbol id="ic-barcode" viewBox="0 0 24 24"><path d="M4 6v12M7 6v12M10 6v12M13 6v12M16 6v12M19 6v12"/></symbol>
+
+    <!-- Status bar indicators -->
+    <symbol id="ic-signal" viewBox="0 0 18 11">
+      <rect x="0" y="7" width="3" height="4" rx="1" fill="currentColor" stroke="none"/>
+      <rect x="5" y="5" width="3" height="6" rx="1" fill="currentColor" stroke="none"/>
+      <rect x="10" y="2" width="3" height="9" rx="1" fill="currentColor" stroke="none"/>
+      <rect x="15" y="0" width="3" height="11" rx="1" fill="currentColor" stroke="none" opacity="0.4"/>
+    </symbol>
+    <symbol id="ic-wifi" viewBox="0 0 16 11">
+      <path d="M2 4 Q 8 -1 14 4" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <path d="M4 6.5 Q 8 3 12 6.5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <circle cx="8" cy="9" r="1" fill="currentColor" stroke="none"/>
+    </symbol>
+    <symbol id="ic-battery" viewBox="0 0 26 12">
+      <rect x="0.5" y="0.5" width="22" height="11" rx="3" fill="none" stroke="currentColor" stroke-width="1"/>
+      <rect x="2" y="2" width="17" height="8" rx="1.5" fill="currentColor" stroke="none"/>
+      <rect x="23" y="3.5" width="2" height="5" rx="0.6" fill="currentColor" stroke="none"/>
+    </symbol>
+  </defs>
+</svg>
+
+<main class="canvas">
+
+  <!-- ============================================================
+       INTRO
+       ============================================================ -->
+  <header class="canvas__intro">
+    <h1 class="canvas__title">
+      LecoLista <span class="canvas__title-mark">·</span>
+      <span class="canvas__title-sub">hi-fi</span>
+    </h1>
+    <p class="canvas__lede">
+      Two flows — AI Shopping List and Add Item — on iPad portrait (kitchen hub)
+      and iPhone (companion). Two distinct directions per flow, side by side.
+      The AI surface is a quiet warm amber that recurs across patterns;
+      family members read as small monogram avatars on every item.
+    </p>
+    <div class="canvas__meta">
+      <span>Geist + Instrument Serif</span>
+      <span>Warm cream surfaces</span>
+      <span>Amber = AI</span>
+    </div>
+  </header>
+
+  <!-- ============================================================
+       SECTION 01 · AI SHOPPING LIST
+       ============================================================ -->
+  <section class="section" id="shopping">
+    <header class="section__head">
+      <span class="section__num">01</span>
+      <h2 class="section__title">AI Shopping List</h2>
+      <span class="section__sub">— two takes on how the list itself organizes around AI</span>
+    </header>
+
+    <!-- ─────────────── Direction A ─────────────── -->
+    <article class="direction">
+      <header class="direction__head">
+        <span class="direction__letter">A</span>
+        <span class="direction__name">Sectioned aisles + AI rail</span>
+        <span class="direction__desc">— familiar grocery mental model with a proactive AI strip up top</span>
+      </header>
+
+      <div class="direction__row">
+
+        <!-- ▸ A · iPad ▸ -->
+        <div class="artboard">
+          <span class="artboard__label">A · iPad · 820 × 1180</span>
+          <div class="frame frame--ipad">
+            <div class="frame__inner">
+
+              <!-- Status bar -->
+              <div class="status-bar">
+                <span>9:41</span>
+                <span class="status-bar__indicators">
+                  <svg width="18" height="11"><use href="#ic-signal"/></svg>
+                  <svg width="16" height="11"><use href="#ic-wifi"/></svg>
+                  <svg width="26" height="12"><use href="#ic-battery"/></svg>
+                </span>
+              </div>
+
+              <!-- Body -->
+              <div class="shopping-pad">
+
+                <header class="shopping-header">
+                  <div class="shopping-header__title">
+                    <span class="tag">This week · Tue 12 May</span>
+                    <span class="display" style="font-size:68px">
+                      Shopping<span style="color:var(--ink-3);font-style:italic">.</span>
+                    </span>
+                    <span class="shopping-header__count">23 items · 3 stores · ~€84</span>
+                  </div>
+                  <div class="shopping-header__actions">
+                    <span class="avatar-stack avatar-stack--30">
+                      <span class="avatar avatar--m avatar--30">M</span>
+                      <span class="avatar avatar--l avatar--30">L</span>
+                      <span class="avatar avatar--a avatar--30">A</span>
+                      <span class="avatar avatar--k avatar--30">K</span>
+                    </span>
+                    <button class="btn">
+                      <span class="icon" style="width:16px;height:16px">
+                        <svg width="16" height="16" stroke-width="2"><use href="#ic-plus"/></svg>
+                      </span>
+                      Add
+                    </button>
+                  </div>
+                </header>
+
+                <!-- Tab strip -->
+                <nav class="tab-strip" style="margin-bottom:18px">
+                  <span class="tab tab--active">
+                    <span class="icon"><svg width="15" height="15" stroke-width="1.7"><use href="#ic-bag"/></svg></span>
+                    List
+                  </span>
+                  <span class="tab">
+                    <span class="icon"><svg width="15" height="15" stroke-width="1.7"><use href="#ic-inventory"/></svg></span>
+                    Inventory
+                  </span>
+                  <span class="tab">
+                    <span class="icon"><svg width="15" height="15"><use href="#ic-sparkle"/></svg></span>
+                    Insights
+                  </span>
+                  <span class="tab">
+                    <span class="icon"><svg width="15" height="15" stroke-width="1.7"><use href="#ic-routines"/></svg></span>
+                    Routines
+                  </span>
+                </nav>
+
+                <!-- AI rail -->
+                <div class="ai-rail" style="margin-bottom:20px">
+                  <div class="ai-rail-card ai-rail-card--accent">
+                    <div class="ai-rail-card__head">
+                      <span class="ai-rail-card__sparkle"><svg width="13" height="13"><use href="#ic-sparkle"/></svg></span>
+                      <span class="tag tag--ai">Predicted</span>
+                    </div>
+                    <div class="ai-rail-card__title">Milk ends tomorrow morning</div>
+                    <div class="ai-rail-card__body">Whole milk · ~0.9 L over 5 days. Add 2 L for the usual cadence.</div>
+                  </div>
+                  <div class="ai-rail-card">
+                    <div class="ai-rail-card__head">
+                      <span class="ai-rail-card__sparkle"><svg width="13" height="13"><use href="#ic-sparkle"/></svg></span>
+                      <span class="tag tag--ai">Optimize</span>
+                    </div>
+                    <div class="ai-rail-card__title">Split into two stops, save 14 min</div>
+                    <div class="ai-rail-card__body">Produce → Mercato. Pantry &amp; household → Atrio. Same total spend.</div>
+                  </div>
+                  <div class="ai-rail-card">
+                    <div class="ai-rail-card__head">
+                      <span class="ai-rail-card__sparkle"><svg width="13" height="13"><use href="#ic-sparkle"/></svg></span>
+                      <span class="tag tag--ai">Forgotten</span>
+                    </div>
+                    <div class="ai-rail-card__title">Detergent — usually here by now</div>
+                    <div class="ai-rail-card__body">Last bought 27 days ago. Cadence is 3 weeks.</div>
+                  </div>
+                </div>
+
+                <!-- Aisles grid 2×2 -->
+                <div class="aisles-grid">
+
+                  <!-- Produce -->
+                  <div class="card card--flush" style="border-radius:20px">
+                    <header class="aisle__head">
+                      <span class="aisle__title">
+                        <span class="aisle__title-text">Produce</span>
+                        <span class="aisle__count">6 items</span>
+                      </span>
+                      <span class="aisle__chev"><svg width="16" height="16" stroke="currentColor" fill="none" stroke-width="1.6"><use href="#ic-chevron-d"/></svg></span>
+                    </header>
+                    <hr class="hr" />
+                    <div class="item-row">
+                      <span class="check"><svg class="check__mark" width="15" height="15" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">banana</span>
+                      <div class="item-row__body">
+                        <div class="item-row__line">
+                          <span class="item-row__name">Bananas</span>
+                          <span class="ai-badge"><svg width="11" height="11"><use href="#ic-sparkle"/></svg>every 5d</span>
+                        </div>
+                      </div>
+                      <span class="qty">6 ct</span>
+                      <span class="avatar avatar--m avatar--22">M</span>
+                    </div>
+                    <hr class="hr hr--inset" />
+                    <div class="item-row">
+                      <span class="check"><svg class="check__mark" width="15" height="15" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">avo</span>
+                      <div class="item-row__body">
+                        <div class="item-row__line"><span class="item-row__name">Avocados</span></div>
+                      </div>
+                      <span class="qty">3 ct</span>
+                      <span class="avatar avatar--l avatar--22">L</span>
+                    </div>
+                    <hr class="hr hr--inset" />
+                    <div class="item-row item-row--done">
+                      <span class="check check--done"><svg class="check__mark" width="15" height="15" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">spin</span>
+                      <div class="item-row__body">
+                        <div class="item-row__line"><span class="item-row__name">Spinach</span></div>
+                      </div>
+                      <span class="qty">1 bag</span>
+                      <span class="avatar avatar--a avatar--22">A</span>
+                    </div>
+                    <hr class="hr hr--inset" />
+                    <div class="item-row">
+                      <span class="check"><svg class="check__mark" width="15" height="15" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">lem</span>
+                      <div class="item-row__body">
+                        <div class="item-row__line"><span class="item-row__name">Lemons</span></div>
+                      </div>
+                      <span class="qty">4 ct</span>
+                      <span class="avatar avatar--m avatar--22">M</span>
+                    </div>
+                  </div>
+
+                  <!-- Dairy -->
+                  <div class="card card--flush" style="border-radius:20px">
+                    <header class="aisle__head">
+                      <span class="aisle__title">
+                        <span class="aisle__title-text">Dairy</span>
+                        <span class="aisle__count">4 items</span>
+                      </span>
+                      <span class="aisle__chev"><svg width="16" height="16" stroke="currentColor" fill="none" stroke-width="1.6"><use href="#ic-chevron-d"/></svg></span>
+                    </header>
+                    <hr class="hr" />
+                    <div class="item-row">
+                      <span class="check"><svg class="check__mark" width="15" height="15" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">milk</span>
+                      <div class="item-row__body">
+                        <div class="item-row__line">
+                          <span class="item-row__name">Whole milk</span>
+                          <span class="ai-badge"><svg width="11" height="11"><use href="#ic-sparkle"/></svg>predicted</span>
+                        </div>
+                      </div>
+                      <span class="qty">2 L</span>
+                      <span class="avatar avatar--k avatar--22">K</span>
+                    </div>
+                    <hr class="hr hr--inset" />
+                    <div class="item-row">
+                      <span class="check"><svg class="check__mark" width="15" height="15" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">yog</span>
+                      <div class="item-row__body">
+                        <div class="item-row__line"><span class="item-row__name">Greek yogurt</span></div>
+                      </div>
+                      <span class="qty">500 g</span>
+                      <span class="avatar avatar--a avatar--22">A</span>
+                    </div>
+                    <hr class="hr hr--inset" />
+                    <div class="item-row item-row--done">
+                      <span class="check check--done"><svg class="check__mark" width="15" height="15" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">btr</span>
+                      <div class="item-row__body">
+                        <div class="item-row__line"><span class="item-row__name">Butter</span></div>
+                      </div>
+                      <span class="qty">1 pk</span>
+                      <span class="avatar avatar--m avatar--22">M</span>
+                    </div>
+                  </div>
+
+                  <!-- Pantry -->
+                  <div class="card card--flush" style="border-radius:20px">
+                    <header class="aisle__head">
+                      <span class="aisle__title">
+                        <span class="aisle__title-text">Pantry</span>
+                        <span class="aisle__count">7 items</span>
+                      </span>
+                      <span class="aisle__chev"><svg width="16" height="16" stroke="currentColor" fill="none" stroke-width="1.6"><use href="#ic-chevron-d"/></svg></span>
+                    </header>
+                    <hr class="hr" />
+                    <div class="item-row">
+                      <span class="check"><svg class="check__mark" width="15" height="15" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">oil</span>
+                      <div class="item-row__body">
+                        <div class="item-row__line"><span class="item-row__name">Olive oil</span></div>
+                        <div class="item-row__note">low — 12% remaining</div>
+                      </div>
+                      <span class="qty">1 L</span>
+                      <span class="avatar avatar--m avatar--22">M</span>
+                    </div>
+                    <hr class="hr hr--inset" />
+                    <div class="item-row">
+                      <span class="check"><svg class="check__mark" width="15" height="15" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">pasta</span>
+                      <div class="item-row__body">
+                        <div class="item-row__line"><span class="item-row__name">Pasta</span></div>
+                      </div>
+                      <span class="qty">2 pk</span>
+                      <span class="avatar avatar--l avatar--22">L</span>
+                    </div>
+                    <hr class="hr hr--inset" />
+                    <div class="item-row">
+                      <span class="check"><svg class="check__mark" width="15" height="15" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">cof</span>
+                      <div class="item-row__body">
+                        <div class="item-row__line">
+                          <span class="item-row__name">Coffee beans</span>
+                          <span class="ai-badge"><svg width="11" height="11"><use href="#ic-sparkle"/></svg>+18% this mo.</span>
+                        </div>
+                      </div>
+                      <span class="qty">500 g</span>
+                      <span class="avatar avatar--a avatar--22">A</span>
+                    </div>
+                    <hr class="hr hr--inset" />
+                    <div class="item-row">
+                      <span class="check"><svg class="check__mark" width="15" height="15" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">salt</span>
+                      <div class="item-row__body">
+                        <div class="item-row__line"><span class="item-row__name">Sea salt</span></div>
+                      </div>
+                      <span class="qty">1 ct</span>
+                      <span class="avatar avatar--k avatar--22">K</span>
+                    </div>
+                  </div>
+
+                  <!-- Household -->
+                  <div class="card card--flush" style="border-radius:20px">
+                    <header class="aisle__head">
+                      <span class="aisle__title">
+                        <span class="aisle__title-text">Household</span>
+                        <span class="aisle__count">3 items</span>
+                      </span>
+                      <span class="aisle__chev"><svg width="16" height="16" stroke="currentColor" fill="none" stroke-width="1.6"><use href="#ic-chevron-d"/></svg></span>
+                    </header>
+                    <hr class="hr" />
+                    <div class="item-row">
+                      <span class="check"><svg class="check__mark" width="15" height="15" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">det</span>
+                      <div class="item-row__body">
+                        <div class="item-row__line">
+                          <span class="item-row__name">Detergent</span>
+                          <span class="ai-badge"><svg width="11" height="11"><use href="#ic-sparkle"/></svg>forgotten?</span>
+                        </div>
+                      </div>
+                      <span class="qty">1 ct</span>
+                      <span class="avatar avatar--a avatar--22">A</span>
+                    </div>
+                    <hr class="hr hr--inset" />
+                    <div class="item-row">
+                      <span class="check"><svg class="check__mark" width="15" height="15" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">spng</span>
+                      <div class="item-row__body">
+                        <div class="item-row__line"><span class="item-row__name">Sponges</span></div>
+                      </div>
+                      <span class="qty">4 ct</span>
+                      <span class="avatar avatar--m avatar--22">M</span>
+                    </div>
+                    <hr class="hr hr--inset" />
+                    <div class="item-row item-row--done">
+                      <span class="check check--done"><svg class="check__mark" width="15" height="15" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">bag</span>
+                      <div class="item-row__body">
+                        <div class="item-row__line"><span class="item-row__name">Trash bags</span></div>
+                      </div>
+                      <span class="qty">1 roll</span>
+                      <span class="avatar avatar--l avatar--22">L</span>
+                    </div>
+                  </div>
+
+                </div><!-- /aisles-grid -->
+
+                <!-- Route bar -->
+                <div class="route-bar">
+                  <div class="route-bar__left">
+                    <span class="tag">Route</span>
+                    <span class="route-bar__path">
+                      Mercato <span class="arrow">→</span> Atrio <span class="arrow">→</span> Pharmacy
+                    </span>
+                  </div>
+                  <div class="route-bar__right">
+                    <span class="route-bar__time">~28 min</span>
+                    <button class="btn btn--ghost btn--sm">
+                      Start
+                      <span class="icon"><svg width="14" height="14" stroke-width="1.7"><use href="#ic-arrow-r"/></svg></span>
+                    </button>
+                  </div>
+                </div>
+
+              </div><!-- /shopping-pad -->
+            </div><!-- /frame__inner -->
+          </div><!-- /frame -->
+        </div><!-- /artboard -->
+
+        <!-- ▸ A · iPhone ▸ -->
+        <div class="artboard">
+          <span class="artboard__label">A · iPhone · 380 × 800</span>
+          <div class="frame frame--iphone">
+            <div class="frame__inner">
+
+              <div class="status-bar status-bar--phone">
+                <span>9:41</span>
+                <span class="status-bar__indicators">
+                  <svg width="18" height="11"><use href="#ic-signal"/></svg>
+                  <svg width="16" height="11"><use href="#ic-wifi"/></svg>
+                  <svg width="26" height="12"><use href="#ic-battery"/></svg>
+                </span>
+              </div>
+
+              <div style="padding:4px 18px 100px">
+
+                <header style="display:flex;justify-content:space-between;align-items:flex-end">
+                  <div>
+                    <span class="tag">This week</span>
+                    <div style="margin-top:4px"><span class="display" style="font-size:42px">Shopping</span></div>
+                    <div style="font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums;margin-top:2px">23 items · 3 stores</div>
+                  </div>
+                  <span class="avatar-stack avatar-stack--24">
+                    <span class="avatar avatar--m avatar--24">M</span>
+                    <span class="avatar avatar--l avatar--24">L</span>
+                    <span class="avatar avatar--a avatar--24">A</span>
+                  </span>
+                </header>
+
+                <!-- Pinned AI card -->
+                <div style="margin-top:14px">
+                  <div class="ai-rail-card ai-rail-card--accent">
+                    <div class="ai-rail-card__head">
+                      <span class="ai-rail-card__sparkle"><svg width="13" height="13"><use href="#ic-sparkle"/></svg></span>
+                      <span class="tag tag--ai">Predicted</span>
+                    </div>
+                    <div class="ai-rail-card__title">Milk ends tomorrow</div>
+                    <div class="ai-rail-card__body">Add 2 L for usual cadence.</div>
+                  </div>
+                </div>
+
+                <!-- Horizontal rail (peek) -->
+                <div style="margin-top:10px;display:flex;gap:10px;overflow:hidden">
+                  <div style="min-width:220px">
+                    <div class="ai-rail-card">
+                      <div class="ai-rail-card__head">
+                        <span class="ai-rail-card__sparkle"><svg width="13" height="13"><use href="#ic-sparkle"/></svg></span>
+                        <span class="tag tag--ai">Optimize</span>
+                      </div>
+                      <div class="ai-rail-card__title">Split into 2 stores</div>
+                      <div class="ai-rail-card__body">Save ~14 min</div>
+                    </div>
+                  </div>
+                  <div style="min-width:220px">
+                    <div class="ai-rail-card">
+                      <div class="ai-rail-card__head">
+                        <span class="ai-rail-card__sparkle"><svg width="13" height="13"><use href="#ic-sparkle"/></svg></span>
+                        <span class="tag tag--ai">Forgotten</span>
+                      </div>
+                      <div class="ai-rail-card__title">Detergent</div>
+                      <div class="ai-rail-card__body">3-week cadence</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Aisles -->
+                <div style="margin-top:14px;display:flex;flex-direction:column;gap:10px">
+
+                  <div class="card card--flush" style="border-radius:20px">
+                    <header class="aisle__head">
+                      <span class="aisle__title">
+                        <span class="aisle__title-text">Produce</span>
+                        <span class="aisle__count">6</span>
+                      </span>
+                      <span class="aisle__chev"><svg width="16" height="16" stroke="currentColor" fill="none" stroke-width="1.6"><use href="#ic-chevron-d"/></svg></span>
+                    </header>
+                    <hr class="hr" />
+                    <div class="item-row">
+                      <span class="check"><svg class="check__mark" width="15" height="15" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">ban</span>
+                      <div class="item-row__body">
+                        <div class="item-row__line">
+                          <span class="item-row__name">Bananas</span>
+                          <span class="ai-badge"><svg width="11" height="11"><use href="#ic-sparkle"/></svg>every 5d</span>
+                        </div>
+                      </div>
+                      <span class="qty">6 ct</span>
+                      <span class="avatar avatar--m avatar--22">M</span>
+                    </div>
+                    <hr class="hr hr--inset" />
+                    <div class="item-row">
+                      <span class="check"><svg class="check__mark" width="15" height="15" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">avo</span>
+                      <div class="item-row__body"><div class="item-row__line"><span class="item-row__name">Avocados</span></div></div>
+                      <span class="qty">3 ct</span>
+                      <span class="avatar avatar--l avatar--22">L</span>
+                    </div>
+                    <hr class="hr hr--inset" />
+                    <div class="item-row item-row--done">
+                      <span class="check check--done"><svg class="check__mark" width="15" height="15" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">spn</span>
+                      <div class="item-row__body"><div class="item-row__line"><span class="item-row__name">Spinach</span></div></div>
+                      <span class="qty">1 bag</span>
+                      <span class="avatar avatar--a avatar--22">A</span>
+                    </div>
+                  </div>
+
+                  <div class="card card--flush" style="border-radius:20px">
+                    <header class="aisle__head">
+                      <span class="aisle__title">
+                        <span class="aisle__title-text">Dairy</span>
+                        <span class="aisle__count">4</span>
+                      </span>
+                      <span class="aisle__chev"><svg width="16" height="16" stroke="currentColor" fill="none" stroke-width="1.6"><use href="#ic-chevron-d"/></svg></span>
+                    </header>
+                    <hr class="hr" />
+                    <div class="item-row">
+                      <span class="check"><svg class="check__mark" width="15" height="15" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">mlk</span>
+                      <div class="item-row__body">
+                        <div class="item-row__line">
+                          <span class="item-row__name">Whole milk</span>
+                          <span class="ai-badge"><svg width="11" height="11"><use href="#ic-sparkle"/></svg>predicted</span>
+                        </div>
+                      </div>
+                      <span class="qty">2 L</span>
+                      <span class="avatar avatar--k avatar--22">K</span>
+                    </div>
+                    <hr class="hr hr--inset" />
+                    <div class="item-row">
+                      <span class="check"><svg class="check__mark" width="15" height="15" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">yog</span>
+                      <div class="item-row__body"><div class="item-row__line"><span class="item-row__name">Yogurt</span></div></div>
+                      <span class="qty">500 g</span>
+                      <span class="avatar avatar--a avatar--22">A</span>
+                    </div>
+                  </div>
+
+                  <div class="card card--flush" style="border-radius:20px">
+                    <header class="aisle__head">
+                      <span class="aisle__title">
+                        <span class="aisle__title-text">Pantry</span>
+                        <span class="aisle__count">7</span>
+                      </span>
+                      <span class="aisle__chev"><svg width="16" height="16" stroke="currentColor" fill="none" stroke-width="1.6"><use href="#ic-chevron-d"/></svg></span>
+                    </header>
+                    <hr class="hr" />
+                    <div class="item-row">
+                      <span class="check"><svg class="check__mark" width="15" height="15" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">oil</span>
+                      <div class="item-row__body">
+                        <div class="item-row__line"><span class="item-row__name">Olive oil</span></div>
+                        <div class="item-row__note">low — 12%</div>
+                      </div>
+                      <span class="qty">1 L</span>
+                      <span class="avatar avatar--m avatar--22">M</span>
+                    </div>
+                    <hr class="hr hr--inset" />
+                    <div class="item-row">
+                      <span class="check"><svg class="check__mark" width="15" height="15" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">cof</span>
+                      <div class="item-row__body">
+                        <div class="item-row__line">
+                          <span class="item-row__name">Coffee</span>
+                          <span class="ai-badge"><svg width="11" height="11"><use href="#ic-sparkle"/></svg>+18% mo.</span>
+                        </div>
+                      </div>
+                      <span class="qty">500 g</span>
+                      <span class="avatar avatar--a avatar--22">A</span>
+                    </div>
+                  </div>
+
+                </div>
+
+              </div>
+
+              <!-- Add bar -->
+              <div class="add-bar">
+                <span class="add-bar__left">
+                  <span class="icon"><svg width="16" height="16" stroke-width="1.7"><use href="#ic-search"/></svg></span>
+                  <span class="add-bar__placeholder">Search or add…</span>
+                </span>
+                <span class="add-bar__buttons">
+                  <button class="icon-btn"><svg width="16" height="16" stroke-width="1.7" stroke="currentColor" fill="none"><use href="#ic-scan"/></svg></button>
+                  <button class="icon-btn icon-btn--ai"><svg width="16" height="16" stroke="#fff" fill="none"><use href="#ic-mic"/></svg></button>
+                </span>
+              </div>
+
+            </div><!-- /frame__inner -->
+          </div>
+        </div><!-- /artboard -->
+
+      </div><!-- /direction__row -->
+    </article><!-- /direction A -->
+
+    <!-- ─────────────── Direction B ─────────────── -->
+    <article class="direction">
+      <header class="direction__head">
+        <span class="direction__letter">B</span>
+        <span class="direction__name">Priority single stack + ambient gutter</span>
+        <span class="direction__desc">— one AI-prioritized list with a calm sidebar of ambient insights</span>
+      </header>
+
+      <div class="direction__row">
+
+        <!-- ▸ B · iPad ▸ -->
+        <div class="artboard">
+          <span class="artboard__label">B · iPad · 820 × 1180</span>
+          <div class="frame frame--ipad">
+            <div class="frame__inner">
+
+              <div class="status-bar">
+                <span>9:41</span>
+                <span class="status-bar__indicators">
+                  <svg width="18" height="11"><use href="#ic-signal"/></svg>
+                  <svg width="16" height="11"><use href="#ic-wifi"/></svg>
+                  <svg width="26" height="12"><use href="#ic-battery"/></svg>
+                </span>
+              </div>
+
+              <div class="shopping-pad-b">
+
+                <!-- LEFT — priority stack -->
+                <div>
+                  <header class="shopping-header" style="margin-bottom:16px">
+                    <div class="shopping-header__title">
+                      <span class="tag">Tue 12 May · live</span>
+                      <span class="display" style="font-size:64px">
+                        This <em>week</em>
+                      </span>
+                      <span class="shopping-header__count" style="font-size:13.5px">23 items · ranked by AI urgency</span>
+                    </div>
+                    <div class="shopping-header__actions">
+                      <span class="avatar-stack avatar-stack--28">
+                        <span class="avatar avatar--m avatar--28">M</span>
+                        <span class="avatar avatar--l avatar--28">L</span>
+                        <span class="avatar avatar--a avatar--28">A</span>
+                        <span class="avatar avatar--k avatar--28">K</span>
+                      </span>
+                      <button class="btn btn--ghost">
+                        <span class="icon"><svg width="14" height="14" stroke-width="1.7"><use href="#ic-sliders"/></svg></span>
+                        Sort
+                      </button>
+                    </div>
+                  </header>
+
+                  <!-- Toolbar -->
+                  <div class="toolbar" style="margin-bottom:4px">
+                    <div class="toolbar__group">
+                      <span class="toolbar__sort toolbar__sort--active">
+                        Urgency<span class="icon"><svg width="12" height="12" stroke-width="1.8"><use href="#ic-chevron-d"/></svg></span>
+                      </span>
+                      <span class="toolbar__sort">Aisle</span>
+                      <span class="toolbar__sort">Added</span>
+                      <span class="toolbar__sort">Store</span>
+                      <span class="toolbar__sort">Pending</span>
+                    </div>
+                    <span class="toolbar__live">live · 4 editing</span>
+                  </div>
+
+                  <!-- Priority rows -->
+                  <div>
+                    <div class="priority">
+                      <span class="priority__rank">01</span>
+                      <span class="check"><svg class="check__mark" width="14" height="14" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">milk</span>
+                      <div class="priority__body">
+                        <div class="priority__line">
+                          <span class="priority__name">Whole milk</span>
+                          <span class="priority__cat">dairy</span>
+                          <span class="priority__dot priority__dot--high"></span>
+                        </div>
+                        <div class="priority__hint">
+                          <span class="icon"><svg width="11" height="11"><use href="#ic-sparkle"/></svg></span>
+                          <span>ends tomorrow morning</span>
+                        </div>
+                      </div>
+                      <span class="qty">2 L</span>
+                      <span class="avatar avatar--k avatar--22">K</span>
+                    </div>
+
+                    <div class="priority">
+                      <span class="priority__rank">02</span>
+                      <span class="check"><svg class="check__mark" width="14" height="14" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">cof</span>
+                      <div class="priority__body">
+                        <div class="priority__line">
+                          <span class="priority__name">Coffee beans</span>
+                          <span class="priority__cat">pantry</span>
+                          <span class="priority__dot priority__dot--high"></span>
+                        </div>
+                        <div class="priority__hint">
+                          <span class="icon"><svg width="11" height="11"><use href="#ic-sparkle"/></svg></span>
+                          <span>usage +18% this month</span>
+                        </div>
+                      </div>
+                      <span class="qty">500 g</span>
+                      <span class="avatar avatar--a avatar--22">A</span>
+                    </div>
+
+                    <div class="priority">
+                      <span class="priority__rank">03</span>
+                      <span class="check"><svg class="check__mark" width="14" height="14" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">ban</span>
+                      <div class="priority__body">
+                        <div class="priority__line">
+                          <span class="priority__name">Bananas</span>
+                          <span class="priority__cat">produce</span>
+                          <span class="priority__dot priority__dot--mid"></span>
+                        </div>
+                        <div class="priority__hint">
+                          <span class="icon"><svg width="11" height="11"><use href="#ic-sparkle"/></svg></span>
+                          <span>every 5 days</span>
+                        </div>
+                      </div>
+                      <span class="qty">6 ct</span>
+                      <span class="avatar avatar--m avatar--22">M</span>
+                    </div>
+
+                    <div class="priority">
+                      <span class="priority__rank">04</span>
+                      <span class="check"><svg class="check__mark" width="14" height="14" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">det</span>
+                      <div class="priority__body">
+                        <div class="priority__line">
+                          <span class="priority__name">Detergent</span>
+                          <span class="priority__cat">household</span>
+                          <span class="priority__dot priority__dot--mid"></span>
+                        </div>
+                        <div class="priority__hint">
+                          <span class="icon"><svg width="11" height="11"><use href="#ic-sparkle"/></svg></span>
+                          <span>forgotten vs. usual</span>
+                        </div>
+                      </div>
+                      <span class="qty">1 ct</span>
+                      <span class="avatar avatar--a avatar--22">A</span>
+                    </div>
+
+                    <div class="priority">
+                      <span class="priority__rank">05</span>
+                      <span class="check"><svg class="check__mark" width="14" height="14" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">oil</span>
+                      <div class="priority__body">
+                        <div class="priority__line">
+                          <span class="priority__name">Olive oil</span>
+                          <span class="priority__cat">pantry</span>
+                          <span class="priority__dot priority__dot--mid"></span>
+                        </div>
+                        <div class="priority__hint">
+                          <span class="icon"><svg width="11" height="11"><use href="#ic-sparkle"/></svg></span>
+                          <span>12% remaining</span>
+                        </div>
+                      </div>
+                      <span class="qty">1 L</span>
+                      <span class="avatar avatar--m avatar--22">M</span>
+                    </div>
+
+                    <div class="priority">
+                      <span class="priority__rank">06</span>
+                      <span class="check"><svg class="check__mark" width="14" height="14" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">avo</span>
+                      <div class="priority__body">
+                        <div class="priority__line">
+                          <span class="priority__name">Avocados</span>
+                          <span class="priority__cat">produce</span>
+                          <span class="priority__dot"></span>
+                        </div>
+                      </div>
+                      <span class="qty">3 ct</span>
+                      <span class="avatar avatar--l avatar--22">L</span>
+                    </div>
+
+                    <div class="priority">
+                      <span class="priority__rank">07</span>
+                      <span class="check"><svg class="check__mark" width="14" height="14" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">yog</span>
+                      <div class="priority__body">
+                        <div class="priority__line">
+                          <span class="priority__name">Greek yogurt</span>
+                          <span class="priority__cat">dairy</span>
+                          <span class="priority__dot"></span>
+                        </div>
+                      </div>
+                      <span class="qty">500 g</span>
+                      <span class="avatar avatar--a avatar--22">A</span>
+                    </div>
+
+                    <div class="priority">
+                      <span class="priority__rank">08</span>
+                      <span class="check"><svg class="check__mark" width="14" height="14" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">pasta</span>
+                      <div class="priority__body">
+                        <div class="priority__line">
+                          <span class="priority__name">Pasta</span>
+                          <span class="priority__cat">pantry</span>
+                          <span class="priority__dot"></span>
+                        </div>
+                      </div>
+                      <span class="qty">2 pk</span>
+                      <span class="avatar avatar--l avatar--22">L</span>
+                    </div>
+
+                    <div class="priority">
+                      <span class="priority__rank">09</span>
+                      <span class="check"><svg class="check__mark" width="14" height="14" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">spng</span>
+                      <div class="priority__body">
+                        <div class="priority__line">
+                          <span class="priority__name">Sponges</span>
+                          <span class="priority__cat">household</span>
+                          <span class="priority__dot"></span>
+                        </div>
+                      </div>
+                      <span class="qty">4 ct</span>
+                      <span class="avatar avatar--m avatar--22">M</span>
+                    </div>
+
+                    <div class="priority priority--done">
+                      <span class="priority__rank">10</span>
+                      <span class="check check--done"><svg class="check__mark" width="14" height="14" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">spin</span>
+                      <div class="priority__body">
+                        <div class="priority__line">
+                          <span class="priority__name">Spinach</span>
+                          <span class="priority__cat">produce</span>
+                          <span class="priority__dot"></span>
+                        </div>
+                      </div>
+                      <span class="qty">1 bag</span>
+                      <span class="avatar avatar--a avatar--22">A</span>
+                    </div>
+
+                    <div class="priority priority--done">
+                      <span class="priority__rank">11</span>
+                      <span class="check check--done"><svg class="check__mark" width="14" height="14" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                      <span class="thumb">btr</span>
+                      <div class="priority__body">
+                        <div class="priority__line">
+                          <span class="priority__name">Butter</span>
+                          <span class="priority__cat">dairy</span>
+                          <span class="priority__dot"></span>
+                        </div>
+                      </div>
+                      <span class="qty">1 pk</span>
+                      <span class="avatar avatar--m avatar--22">M</span>
+                    </div>
+
+                    <div class="priority-add">
+                      <span class="icon"><svg width="18" height="18" stroke-width="1.6"><use href="#ic-plus"/></svg></span>
+                      <span>Add item · or hold to speak</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- RIGHT — ambient gutter -->
+                <aside>
+                  <header class="gutter__head">
+                    <span class="gutter__title">Ambient</span>
+                    <span class="tag">updated · just now</span>
+                  </header>
+                  <div class="gutter__list">
+                    <div class="insight-card insight-card--accent">
+                      <div class="insight-card__head">
+                        <span class="insight-card__sparkle"><svg width="12" height="12"><use href="#ic-sparkle"/></svg></span>
+                        <span class="tag tag--ai">Forecast</span>
+                      </div>
+                      <div class="insight-card__title">Milk ends tomorrow</div>
+                      <div class="insight-card__body">Avg 0.9 L / 5d. Last bought Sun.</div>
+                    </div>
+                    <div class="insight-card">
+                      <div class="insight-card__head">
+                        <span class="insight-card__sparkle"><svg width="12" height="12"><use href="#ic-sparkle"/></svg></span>
+                        <span class="tag tag--ai">Optimize</span>
+                      </div>
+                      <div class="insight-card__title">Split into two stores</div>
+                      <div class="insight-card__body">Produce → Mercato (8m). Pantry → Atrio (12m). Save ~14 min.</div>
+                    </div>
+                    <div class="insight-card">
+                      <div class="insight-card__head">
+                        <span class="insight-card__sparkle"><svg width="12" height="12"><use href="#ic-sparkle"/></svg></span>
+                        <span class="tag tag--ai">Meal</span>
+                      </div>
+                      <div class="insight-card__title">Pasta al limone tonight</div>
+                      <div class="insight-card__body">Pantry + fridge match. Add: parsley.</div>
+                    </div>
+                    <div class="insight-card">
+                      <div class="insight-card__head">
+                        <span class="insight-card__sparkle"><svg width="12" height="12"><use href="#ic-sparkle"/></svg></span>
+                        <span class="tag tag--ai">Budget</span>
+                      </div>
+                      <div class="insight-card__title">Coffee +18% this month</div>
+                      <div class="insight-card__body">Cap at 2 bags? Suggest bulk pack.</div>
+                    </div>
+                    <div class="insight-card">
+                      <div class="insight-card__head">
+                        <span class="insight-card__sparkle"><svg width="12" height="12"><use href="#ic-sparkle"/></svg></span>
+                        <span class="tag tag--ai">Forgotten</span>
+                      </div>
+                      <div class="insight-card__title">Detergent missing</div>
+                      <div class="insight-card__body">3-week cadence — last 27 d ago.</div>
+                    </div>
+                    <div class="ambient-ask">
+                      <span class="ambient-ask__avatar">
+                        <svg width="15" height="15" stroke="#fff" fill="none"><use href="#ic-mic"/></svg>
+                      </span>
+                      <span class="ambient-ask__text">Ask the household — “What's missing?”</span>
+                    </div>
+                  </div>
+                </aside>
+
+              </div><!-- /shopping-pad-b -->
+            </div>
+          </div>
+        </div><!-- /artboard -->
+
+        <!-- ▸ B · iPhone ▸ -->
+        <div class="artboard">
+          <span class="artboard__label">B · iPhone · 380 × 800</span>
+          <div class="frame frame--iphone">
+            <div class="frame__inner">
+
+              <div class="status-bar status-bar--phone">
+                <span>9:41</span>
+                <span class="status-bar__indicators">
+                  <svg width="18" height="11"><use href="#ic-signal"/></svg>
+                  <svg width="16" height="11"><use href="#ic-wifi"/></svg>
+                  <svg width="26" height="12"><use href="#ic-battery"/></svg>
+                </span>
+              </div>
+
+              <div style="padding:4px 18px 110px">
+
+                <header style="display:flex;justify-content:space-between;align-items:flex-end">
+                  <div>
+                    <span class="tag">Tue 12 May</span>
+                    <div style="margin-top:4px"><span class="display" style="font-size:40px">This <em>week</em></span></div>
+                    <div style="font-size:12px;color:var(--ink-3);margin-top:2px">23 · ranked by AI</div>
+                  </div>
+                  <span class="avatar-stack avatar-stack--24">
+                    <span class="avatar avatar--m avatar--24">M</span>
+                    <span class="avatar avatar--l avatar--24">L</span>
+                    <span class="avatar avatar--a avatar--24">A</span>
+                  </span>
+                </header>
+
+                <!-- Mini sort -->
+                <div class="toolbar toolbar--phone">
+                  <span class="toolbar__sort toolbar__sort--active">Urgency ↓</span>
+                  <span class="toolbar__sort">Aisle</span>
+                  <span class="toolbar__sort">Store</span>
+                </div>
+
+                <!-- Priority rows -->
+                <div>
+                  <div class="priority">
+                    <span class="priority__rank">01</span>
+                    <span class="check"><svg class="check__mark" width="14" height="14" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                    <span class="thumb">mlk</span>
+                    <div class="priority__body">
+                      <div class="priority__line">
+                        <span class="priority__name">Whole milk</span>
+                        <span class="priority__cat">dairy</span>
+                        <span class="priority__dot priority__dot--high"></span>
+                      </div>
+                      <div class="priority__hint">
+                        <span class="icon"><svg width="11" height="11"><use href="#ic-sparkle"/></svg></span>
+                        <span>ends tomorrow morning</span>
+                      </div>
+                    </div>
+                    <span class="qty">2 L</span>
+                    <span class="avatar avatar--k avatar--22">K</span>
+                  </div>
+
+                  <div class="priority">
+                    <span class="priority__rank">02</span>
+                    <span class="check"><svg class="check__mark" width="14" height="14" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                    <span class="thumb">cof</span>
+                    <div class="priority__body">
+                      <div class="priority__line">
+                        <span class="priority__name">Coffee beans</span>
+                        <span class="priority__cat">pantry</span>
+                        <span class="priority__dot priority__dot--high"></span>
+                      </div>
+                      <div class="priority__hint">
+                        <span class="icon"><svg width="11" height="11"><use href="#ic-sparkle"/></svg></span>
+                        <span>+18% this month</span>
+                      </div>
+                    </div>
+                    <span class="qty">500 g</span>
+                    <span class="avatar avatar--a avatar--22">A</span>
+                  </div>
+
+                  <div class="priority">
+                    <span class="priority__rank">03</span>
+                    <span class="check"><svg class="check__mark" width="14" height="14" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                    <span class="thumb">ban</span>
+                    <div class="priority__body">
+                      <div class="priority__line">
+                        <span class="priority__name">Bananas</span>
+                        <span class="priority__cat">produce</span>
+                        <span class="priority__dot priority__dot--mid"></span>
+                      </div>
+                      <div class="priority__hint">
+                        <span class="icon"><svg width="11" height="11"><use href="#ic-sparkle"/></svg></span>
+                        <span>every 5 days</span>
+                      </div>
+                    </div>
+                    <span class="qty">6 ct</span>
+                    <span class="avatar avatar--m avatar--22">M</span>
+                  </div>
+
+                  <div class="priority">
+                    <span class="priority__rank">04</span>
+                    <span class="check"><svg class="check__mark" width="14" height="14" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                    <span class="thumb">det</span>
+                    <div class="priority__body">
+                      <div class="priority__line">
+                        <span class="priority__name">Detergent</span>
+                        <span class="priority__cat">household</span>
+                        <span class="priority__dot priority__dot--mid"></span>
+                      </div>
+                      <div class="priority__hint">
+                        <span class="icon"><svg width="11" height="11"><use href="#ic-sparkle"/></svg></span>
+                        <span>forgotten?</span>
+                      </div>
+                    </div>
+                    <span class="qty">1 ct</span>
+                    <span class="avatar avatar--a avatar--22">A</span>
+                  </div>
+
+                  <div class="priority">
+                    <span class="priority__rank">05</span>
+                    <span class="check"><svg class="check__mark" width="14" height="14" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                    <span class="thumb">oil</span>
+                    <div class="priority__body">
+                      <div class="priority__line">
+                        <span class="priority__name">Olive oil</span>
+                        <span class="priority__cat">pantry</span>
+                        <span class="priority__dot priority__dot--mid"></span>
+                      </div>
+                      <div class="priority__hint">
+                        <span class="icon"><svg width="11" height="11"><use href="#ic-sparkle"/></svg></span>
+                        <span>12% left</span>
+                      </div>
+                    </div>
+                    <span class="qty">1 L</span>
+                    <span class="avatar avatar--m avatar--22">M</span>
+                  </div>
+                </div>
+
+                <!-- Inline insight -->
+                <div style="margin:10px 0">
+                  <div class="insight-card insight-card--accent">
+                    <div class="insight-card__head">
+                      <span class="insight-card__sparkle"><svg width="12" height="12"><use href="#ic-sparkle"/></svg></span>
+                      <span class="tag tag--ai">Meal</span>
+                    </div>
+                    <div class="insight-card__title">Pasta al limone tonight</div>
+                    <div class="insight-card__body">Add: parsley.</div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="priority">
+                    <span class="priority__rank">06</span>
+                    <span class="check"><svg class="check__mark" width="14" height="14" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                    <span class="thumb">avo</span>
+                    <div class="priority__body">
+                      <div class="priority__line">
+                        <span class="priority__name">Avocados</span>
+                        <span class="priority__cat">produce</span>
+                        <span class="priority__dot"></span>
+                      </div>
+                    </div>
+                    <span class="qty">3 ct</span>
+                    <span class="avatar avatar--l avatar--22">L</span>
+                  </div>
+                  <div class="priority">
+                    <span class="priority__rank">07</span>
+                    <span class="check"><svg class="check__mark" width="14" height="14" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                    <span class="thumb">yog</span>
+                    <div class="priority__body">
+                      <div class="priority__line">
+                        <span class="priority__name">Yogurt</span>
+                        <span class="priority__cat">dairy</span>
+                        <span class="priority__dot"></span>
+                      </div>
+                    </div>
+                    <span class="qty">500 g</span>
+                    <span class="avatar avatar--a avatar--22">A</span>
+                  </div>
+                  <div class="priority priority--done">
+                    <span class="priority__rank">08</span>
+                    <span class="check check--done"><svg class="check__mark" width="14" height="14" stroke="#fff" stroke-width="2.4" fill="none"><use href="#ic-check"/></svg></span>
+                    <span class="thumb">spn</span>
+                    <div class="priority__body">
+                      <div class="priority__line">
+                        <span class="priority__name">Spinach</span>
+                        <span class="priority__cat">produce</span>
+                        <span class="priority__dot"></span>
+                      </div>
+                    </div>
+                    <span class="qty">1 bag</span>
+                    <span class="avatar avatar--a avatar--22">A</span>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Bottom ask bar -->
+              <div class="add-bar">
+                <span class="add-bar__left">
+                  <span class="icon" style="color:var(--ai)"><svg width="14" height="14"><use href="#ic-sparkle"/></svg></span>
+                  <span class="add-bar__placeholder">Ask anything…</span>
+                </span>
+                <button class="icon-btn icon-btn--ink"><svg width="16" height="16" stroke="#fff" fill="none"><use href="#ic-mic"/></svg></button>
+              </div>
+
+            </div>
+          </div>
+        </div><!-- /artboard -->
+
+      </div><!-- /direction__row -->
+    </article><!-- /direction B -->
+
+  </section><!-- /Section 01 -->
+
+  <!-- ============================================================
+       SECTION 02 · AI ADD ITEM FLOW
+       ============================================================ -->
+  <section class="section" id="additem">
+    <header class="section__head">
+      <span class="section__num">02</span>
+      <h2 class="section__title">AI Add Item Flow</h2>
+      <span class="section__sub">— two takes on how items enter the system</span>
+    </header>
+
+    <!-- ─────────────── Direction A · Voice-first focus sheet ─────────────── -->
+    <article class="direction">
+      <header class="direction__head">
+        <span class="direction__letter">A</span>
+        <span class="direction__name">Voice-first focus sheet</span>
+        <span class="direction__desc">— one big mic, live transcript, AI parses to chips you can edit</span>
+      </header>
+
+      <div class="direction__row">
+
+        <!-- ▸ A · iPad ▸ -->
+        <div class="artboard">
+          <span class="artboard__label">A · iPad · 820 × 1180</span>
+          <div class="frame frame--ipad">
+            <div class="frame__inner">
+
+              <div class="status-bar">
+                <span>9:41</span>
+                <span class="status-bar__indicators">
+                  <svg width="18" height="11"><use href="#ic-signal"/></svg>
+                  <svg width="16" height="11"><use href="#ic-wifi"/></svg>
+                  <svg width="26" height="12"><use href="#ic-battery"/></svg>
+                </span>
+              </div>
+
+              <!-- ghost background -->
+              <div class="ghost-pad">
+                <div class="ghost-pad__bar"></div>
+                <div class="ghost-pad__row">
+                  <div class="ghost-pad__tile"></div>
+                  <div class="ghost-pad__tile ghost-pad__tile--ai"></div>
+                </div>
+                <div class="ghost-pad__big"></div>
+                <div class="ghost-pad__big" style="height:220px;margin:0"></div>
+              </div>
+              <div class="scrim"></div>
+
+              <!-- Sheet -->
+              <div class="sheet sheet--pad">
+                <header class="sheet__head">
+                  <span class="tag">Add item</span>
+                  <div style="flex:1;display:flex;justify-content:center"><div class="sheet__handle"></div></div>
+                  <button class="icon-btn icon-btn--ghost"><svg width="14" height="14" stroke-width="1.7" stroke="currentColor" fill="none"><use href="#ic-x"/></svg></button>
+                </header>
+
+                <!-- Mode chips -->
+                <div class="mode-chips">
+                  <span class="mode-chip mode-chip--active">
+                    <span class="icon"><svg width="14" height="14" stroke="#fff" fill="#fff"><use href="#ic-mic"/></svg></span>
+                    Voice
+                  </span>
+                  <span class="mode-chip">
+                    <span class="icon"><svg width="14" height="14" stroke-width="1.7"><use href="#ic-plus"/></svg></span>
+                    Type
+                  </span>
+                  <span class="mode-chip">
+                    <span class="icon"><svg width="14" height="14" stroke-width="1.7"><use href="#ic-barcode"/></svg></span>
+                    Barcode
+                  </span>
+                  <span class="mode-chip">
+                    <span class="icon"><svg width="14" height="14" stroke-width="1.7"><use href="#ic-camera"/></svg></span>
+                    Camera
+                  </span>
+                  <span class="mode-chip">
+                    <span class="icon"><svg width="14" height="14" stroke-width="1.7"><use href="#ic-receipt"/></svg></span>
+                    Receipt
+                  </span>
+                </div>
+
+                <!-- Mic hero -->
+                <div class="voice-section">
+                  <div class="mic-hero mic-hero--140">
+                    <div class="mic-hero__ring-outer"></div>
+                    <div class="mic-hero__ring"></div>
+                    <div class="mic-hero__core">
+                      <svg width="53" height="53" stroke="#fff" stroke-width="1.4" fill="#fff"><use href="#ic-mic"/></svg>
+                    </div>
+                  </div>
+                  <span class="tag tag--ai">Listening · tap to stop</span>
+                  <svg class="wave" data-wave data-bars="56" data-seed="1" width="460" height="40"></svg>
+                </div>
+
+                <!-- Heard transcript -->
+                <div class="heard">
+                  <span class="tag">Heard</span>
+                  <div class="heard__quote">"Add ingredients for tacos for Friday — and we're almost out of milk."</div>
+                  <div class="heard__meta">Mara · iPad kitchen hub · 14:22</div>
+                </div>
+
+                <!-- Parsed result -->
+                <div class="parsed-card">
+                  <header class="parsed-card__head">
+                    <span class="parsed-card__head-left">
+                      <span class="icon" style="color:var(--ai)"><svg width="14" height="14"><use href="#ic-sparkle"/></svg></span>
+                      <span class="tag tag--ai">Parsed · 7 items</span>
+                    </span>
+                    <span class="parsed-card__edit">Edit</span>
+                  </header>
+                  <div class="parsed-chips">
+                    <span class="chip"><span class="thumb thumb--xs"></span><span class="chip__name">Ground beef</span><span class="chip__qty">500 g</span><span class="chip__sparkle"><svg width="11" height="11"><use href="#ic-sparkle"/></svg></span><span class="avatar avatar--m avatar--16">M</span></span>
+                    <span class="chip"><span class="thumb thumb--xs"></span><span class="chip__name">Taco shells</span><span class="chip__qty">12 ct</span><span class="chip__sparkle"><svg width="11" height="11"><use href="#ic-sparkle"/></svg></span><span class="avatar avatar--m avatar--16">M</span></span>
+                    <span class="chip"><span class="thumb thumb--xs"></span><span class="chip__name">Cheddar</span><span class="chip__qty">200 g</span><span class="chip__sparkle"><svg width="11" height="11"><use href="#ic-sparkle"/></svg></span><span class="avatar avatar--m avatar--16">M</span></span>
+                    <span class="chip"><span class="thumb thumb--xs"></span><span class="chip__name">Tomatoes</span><span class="chip__qty">4 ct</span><span class="avatar avatar--m avatar--16">M</span></span>
+                    <span class="chip"><span class="thumb thumb--xs"></span><span class="chip__name">Lime</span><span class="chip__qty">2 ct</span><span class="avatar avatar--m avatar--16">M</span></span>
+                    <span class="chip"><span class="thumb thumb--xs"></span><span class="chip__name">Cilantro</span><span class="chip__qty">1 bunch</span><span class="avatar avatar--m avatar--16">M</span></span>
+                    <span class="chip"><span class="thumb thumb--xs"></span><span class="chip__name">Whole milk</span><span class="chip__qty">2 L</span><span class="chip__sparkle"><svg width="11" height="11"><use href="#ic-sparkle"/></svg></span><span class="avatar avatar--m avatar--16">M</span></span>
+                  </div>
+                  <hr class="hr hr--ai" style="margin:14px 0" />
+                  <div class="parsed-card__foot">
+                    <span class="parsed-card__suggest">Suggest substitute: cheddar → monterey jack (in pantry)</span>
+                    <button class="btn btn--ai">
+                      Add all
+                      <span class="icon"><svg width="14" height="14" stroke="#fff" stroke-width="1.8" fill="none"><use href="#ic-arrow-r"/></svg></span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Predicted next -->
+                <div>
+                  <header class="predicted-head">
+                    <span class="predicted-title">Predicted next</span>
+                    <span class="tag">based on your patterns</span>
+                  </header>
+                  <div class="parsed-chips">
+                    <span class="chip"><span class="thumb thumb--xs"></span><span class="chip__name">Bananas</span><span class="chip__qty">6 ct</span></span>
+                    <span class="chip"><span class="thumb thumb--xs"></span><span class="chip__name">Sourdough</span><span class="chip__qty">1 loaf</span></span>
+                    <span class="chip"><span class="thumb thumb--xs"></span><span class="chip__name">Olive oil</span><span class="chip__qty">1 L</span></span>
+                    <span class="chip"><span class="thumb thumb--xs"></span><span class="chip__name">Greek yogurt</span><span class="chip__qty">500 g</span></span>
+                    <span class="chip"><span class="thumb thumb--xs"></span><span class="chip__name">Eggs</span><span class="chip__qty">12 ct</span></span>
+                    <span class="chip"><span class="thumb thumb--xs"></span><span class="chip__name">Spinach</span><span class="chip__qty">1 bag</span></span>
+                    <span class="chip"><span class="thumb thumb--xs"></span><span class="chip__name">Coffee</span><span class="chip__qty">500 g</span></span>
+                  </div>
+                </div>
+              </div><!-- /sheet -->
+
+            </div>
+          </div>
+        </div><!-- /artboard -->
+
+        <!-- ▸ A · iPhone ▸ -->
+        <div class="artboard">
+          <span class="artboard__label">A · iPhone · 380 × 800</span>
+          <div class="frame frame--iphone">
+            <div class="frame__inner">
+
+              <div class="status-bar status-bar--phone">
+                <span>9:41</span>
+                <span class="status-bar__indicators">
+                  <svg width="18" height="11"><use href="#ic-signal"/></svg>
+                  <svg width="16" height="11"><use href="#ic-wifi"/></svg>
+                  <svg width="26" height="12"><use href="#ic-battery"/></svg>
+                </span>
+              </div>
+
+              <div class="ghost-phone">
+                <div class="ghost-phone__bar"></div>
+                <div class="ghost-phone__ai"></div>
+                <div class="ghost-phone__big"></div>
+              </div>
+              <div class="scrim scrim--phone"></div>
+
+              <div class="sheet sheet--phone">
+                <header class="sheet__head" style="margin-bottom:12px">
+                  <span class="tag">Add item</span>
+                  <button class="icon-btn icon-btn--ghost icon-btn--28"><svg width="12" height="12" stroke-width="1.7" stroke="currentColor" fill="none"><use href="#ic-x"/></svg></button>
+                </header>
+
+                <div style="display:flex;gap:6px;justify-content:center;margin-bottom:14px;flex-wrap:wrap">
+                  <span class="mode-chip mode-chip--active">
+                    <span class="icon"><svg width="14" height="14" stroke="#fff" fill="#fff"><use href="#ic-mic"/></svg></span>
+                    Voice
+                  </span>
+                  <span class="mode-chip">
+                    <span class="icon"><svg width="14" height="14" stroke-width="1.7"><use href="#ic-plus"/></svg></span>
+                    Type
+                  </span>
+                  <span class="mode-chip">
+                    <span class="icon"><svg width="14" height="14" stroke-width="1.7"><use href="#ic-barcode"/></svg></span>
+                    Scan
+                  </span>
+                  <span class="mode-chip">
+                    <span class="icon"><svg width="14" height="14" stroke-width="1.7"><use href="#ic-camera"/></svg></span>
+                    Cam
+                  </span>
+                </div>
+
+                <div class="voice-section" style="margin-bottom:14px;gap:10px">
+                  <div class="mic-hero mic-hero--96">
+                    <div class="mic-hero__ring-outer"></div>
+                    <div class="mic-hero__ring"></div>
+                    <div class="mic-hero__core">
+                      <svg width="36" height="36" stroke="#fff" stroke-width="1.4" fill="#fff"><use href="#ic-mic"/></svg>
+                    </div>
+                  </div>
+                  <span class="tag tag--ai">Listening</span>
+                  <svg class="wave" data-wave data-bars="56" data-seed="2" width="290" height="28"></svg>
+                </div>
+
+                <span class="tag">Heard</span>
+                <div style="margin-top:4px;margin-bottom:12px">
+                  <span class="display" style="font-size:22px;line-height:1.2">"Add taco stuff for Friday."</span>
+                </div>
+
+                <div class="parsed-card" style="padding:12px;margin-bottom:12px">
+                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+                    <span class="icon" style="color:var(--ai)"><svg width="12" height="12"><use href="#ic-sparkle"/></svg></span>
+                    <span class="tag tag--ai">Parsed · 6</span>
+                  </div>
+                  <div style="display:flex;flex-wrap:wrap;gap:6px">
+                    <span class="chip"><span class="thumb thumb--xs"></span><span class="chip__name">Beef</span><span class="chip__qty">500 g</span><span class="chip__sparkle"><svg width="11" height="11"><use href="#ic-sparkle"/></svg></span></span>
+                    <span class="chip"><span class="thumb thumb--xs"></span><span class="chip__name">Shells</span><span class="chip__qty">12</span><span class="chip__sparkle"><svg width="11" height="11"><use href="#ic-sparkle"/></svg></span></span>
+                    <span class="chip"><span class="thumb thumb--xs"></span><span class="chip__name">Cheddar</span><span class="chip__qty">200 g</span></span>
+                    <span class="chip"><span class="thumb thumb--xs"></span><span class="chip__name">Tomato</span><span class="chip__qty">4</span></span>
+                    <span class="chip"><span class="thumb thumb--xs"></span><span class="chip__name">Lime</span><span class="chip__qty">2</span></span>
+                    <span class="chip"><span class="thumb thumb--xs"></span><span class="chip__name">Cilantro</span><span class="chip__qty">1</span></span>
+                  </div>
+                </div>
+
+                <div>
+                  <span class="display" style="font-size:16px;font-style:italic">Predicted next</span>
+                  <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px">
+                    <span class="chip"><span class="thumb thumb--xs"></span><span class="chip__name">Bananas</span><span class="chip__qty">6</span></span>
+                    <span class="chip"><span class="thumb thumb--xs"></span><span class="chip__name">Sourdough</span><span class="chip__qty">1</span></span>
+                    <span class="chip"><span class="thumb thumb--xs"></span><span class="chip__name">Eggs</span><span class="chip__qty">12</span></span>
+                    <span class="chip"><span class="thumb thumb--xs"></span><span class="chip__name">Yogurt</span><span class="chip__qty">500 g</span></span>
+                  </div>
+                </div>
+
+                <div style="margin-top:auto;padding-top:14px;display:flex;justify-content:space-between;align-items:center">
+                  <span style="font-size:12px;color:var(--ink-3)">Edit</span>
+                  <button class="btn btn--ai" style="padding:10px 18px;font-size:14px">
+                    Add all
+                    <span class="icon"><svg width="14" height="14" stroke="#fff" stroke-width="1.8" fill="none"><use href="#ic-arrow-r"/></svg></span>
+                  </button>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+        </div><!-- /artboard -->
+
+      </div>
+    </article><!-- /Add Item · A -->
+
+    <!-- ─────────────── Direction B · Multi-modal palette ─────────────── -->
+    <article class="direction">
+      <header class="direction__head">
+        <span class="direction__letter">B</span>
+        <span class="direction__name">Multi-modal palette</span>
+        <span class="direction__desc">— equal-weight grid of input methods, plus AI bundles ready to add</span>
+      </header>
+
+      <div class="direction__row">
+
+        <!-- ▸ B · iPad ▸ -->
+        <div class="artboard">
+          <span class="artboard__label">B · iPad · 820 × 1180</span>
+          <div class="frame frame--ipad">
+            <div class="frame__inner">
+
+              <div class="status-bar">
+                <span>9:41</span>
+                <span class="status-bar__indicators">
+                  <svg width="18" height="11"><use href="#ic-signal"/></svg>
+                  <svg width="16" height="11"><use href="#ic-wifi"/></svg>
+                  <svg width="26" height="12"><use href="#ic-battery"/></svg>
+                </span>
+              </div>
+
+              <div class="addB-pad">
+
+                <header class="addB-header">
+                  <div>
+                    <span class="tag">Add to list</span>
+                    <div style="margin-top:6px">
+                      <span class="display" style="font-size:64px">
+                        Pick a way <em>—</em> or just speak<span class="ink-3">.</span>
+                      </span>
+                    </div>
+                  </div>
+                  <div class="addB-header__actions">
+                    <span class="avatar-stack avatar-stack--26">
+                      <span class="avatar avatar--m avatar--26">M</span>
+                      <span class="avatar avatar--l avatar--26">L</span>
+                      <span class="avatar avatar--a avatar--26">A</span>
+                    </span>
+                    <button class="icon-btn icon-btn--ghost icon-btn--32" style="width:36px;height:36px">
+                      <svg width="14" height="14" stroke-width="1.7" stroke="currentColor" fill="none"><use href="#ic-x"/></svg>
+                    </button>
+                  </div>
+                </header>
+
+                <!-- Always-on text + mic input -->
+                <div style="margin-top:18px;margin-bottom:18px">
+                  <div class="ask-bar">
+                    <span class="ask-bar__sparkle"><svg width="18" height="18"><use href="#ic-sparkle"/></svg></span>
+                    <span class="ask-bar__placeholder">"two bags of bananas, milk, anything we usually buy on Tuesdays…"</span>
+                    <button class="icon-btn icon-btn--40" style="width:40px;height:40px"><svg width="16" height="16" stroke="currentColor" fill="currentColor"><use href="#ic-mic"/></svg></button>
+                    <button class="btn btn--sm" style="height:auto;padding:10px 16px">Add</button>
+                  </div>
+                </div>
+
+                <!-- 3×2 mode grid -->
+                <div class="mode-grid">
+
+                  <!-- Voice (accent) -->
+                  <div class="mode-card mode-card--accent">
+                    <header class="mode-card__head">
+                      <span class="mode-card__icon">
+                        <svg width="16" height="16" stroke="#fff" fill="#fff"><use href="#ic-mic"/></svg>
+                      </span>
+                      <div>
+                        <div class="mode-card__title">Voice</div>
+                        <div class="mode-card__sub">Natural language · always-on</div>
+                      </div>
+                    </header>
+                    <div class="mode-card__preview">
+                      <div class="preview--mic">
+                        <div class="mic-hero mic-hero--56">
+                          <div class="mic-hero__ring-outer"></div>
+                          <div class="mic-hero__ring"></div>
+                          <div class="mic-hero__core">
+                            <svg width="21" height="21" stroke="#fff" stroke-width="1.4" fill="#fff"><use href="#ic-mic"/></svg>
+                          </div>
+                        </div>
+                        <svg class="wave" data-wave data-bars="56" data-seed="2" width="170" height="20"></svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Conversation -->
+                  <div class="mode-card">
+                    <header class="mode-card__head">
+                      <span class="mode-card__icon">
+                        <svg width="16" height="16" stroke-width="1.7" stroke="currentColor" fill="none"><use href="#ic-voice"/></svg>
+                      </span>
+                      <div>
+                        <div class="mode-card__title">Conversation</div>
+                        <div class="mode-card__sub">Multi-turn · context-aware</div>
+                      </div>
+                    </header>
+                    <div class="mode-card__preview">
+                      <div class="preview--chat">
+                        <div class="bubble bubble--user">"What's missing for Friday?"</div>
+                        <div class="bubble bubble--ai">Tortillas, beef, lime, sour cream…</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Barcode -->
+                  <div class="mode-card">
+                    <header class="mode-card__head">
+                      <span class="mode-card__icon">
+                        <svg width="16" height="16" stroke-width="1.7" stroke="currentColor" fill="none"><use href="#ic-barcode"/></svg>
+                      </span>
+                      <div>
+                        <div class="mode-card__title">Barcode</div>
+                        <div class="mode-card__sub">Point at the empty pack</div>
+                      </div>
+                    </header>
+                    <div class="mode-card__preview">
+                      <div class="preview--barcode">
+                        <span class="thumb"></span>
+                        <div class="barcode-frame"></div>
+                        <div class="barcode-line"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Camera scan -->
+                  <div class="mode-card">
+                    <header class="mode-card__head">
+                      <span class="mode-card__icon">
+                        <svg width="16" height="16" stroke-width="1.7" stroke="currentColor" fill="none"><use href="#ic-camera"/></svg>
+                      </span>
+                      <div>
+                        <div class="mode-card__title">Camera scan</div>
+                        <div class="mode-card__sub">Recognize many items</div>
+                      </div>
+                    </header>
+                    <div class="mode-card__preview">
+                      <div class="preview--cam">
+                        <div class="cam-shelf">
+                          <span class="thumb thumb--lg">shelf</span>
+                          <div class="cam-box" style="top:8px;left:8px;width:26px"></div>
+                          <div class="cam-box" style="top:28px;left:14px;width:36px"></div>
+                          <div class="cam-box" style="top:50px;left:10px;width:30px"></div>
+                        </div>
+                        <div class="cam-list">
+                          <span class="chip"><span class="thumb thumb--xs"></span><span class="chip__name">Olive oil</span><span class="chip__qty">1 L</span><span class="chip__sparkle"><svg width="11" height="11"><use href="#ic-sparkle"/></svg></span></span>
+                          <span class="chip"><span class="thumb thumb--xs"></span><span class="chip__name">Pasta</span><span class="chip__qty">500 g</span><span class="chip__sparkle"><svg width="11" height="11"><use href="#ic-sparkle"/></svg></span></span>
+                          <span class="chip"><span class="thumb thumb--xs"></span><span class="chip__name">Salt</span><span class="chip__qty">1</span><span class="chip__sparkle"><svg width="11" height="11"><use href="#ic-sparkle"/></svg></span></span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Receipt OCR -->
+                  <div class="mode-card">
+                    <header class="mode-card__head">
+                      <span class="mode-card__icon">
+                        <svg width="16" height="16" stroke-width="1.7" stroke="currentColor" fill="none"><use href="#ic-receipt"/></svg>
+                      </span>
+                      <div>
+                        <div class="mode-card__title">Receipt OCR</div>
+                        <div class="mode-card__sub">Snap &amp; auto-import</div>
+                      </div>
+                    </header>
+                    <div class="mode-card__preview">
+                      <div class="preview--receipt">
+                        <div class="receipt-card">
+                          <div class="receipt-line" style="width:90%"></div>
+                          <div class="receipt-line" style="width:70%"></div>
+                          <div class="receipt-line" style="width:90%"></div>
+                          <div class="receipt-line" style="width:70%"></div>
+                          <div class="receipt-line" style="width:90%"></div>
+                          <div class="receipt-line" style="width:70%"></div>
+                        </div>
+                        <div class="receipt-list">
+                          <span>Bananas  6 ct</span>
+                          <span>Yogurt  500 g</span>
+                          <span>Bread  1 lf</span>
+                          <span>Coffee  500 g</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Recent & repeat -->
+                  <div class="mode-card">
+                    <header class="mode-card__head">
+                      <span class="mode-card__icon">
+                        <svg width="16" height="16" stroke-width="1.7" stroke="currentColor" fill="none"><use href="#ic-routines"/></svg>
+                      </span>
+                      <div>
+                        <div class="mode-card__title">Recent &amp; repeat</div>
+                        <div class="mode-card__sub">Things you usually buy</div>
+                      </div>
+                    </header>
+                    <div class="mode-card__preview">
+                      <div class="preview--recent">
+                        <span class="recent-chip">Bananas</span>
+                        <span class="recent-chip">Eggs 12</span>
+                        <span class="recent-chip">Milk 2 L</span>
+                        <span class="recent-chip">Sourdough</span>
+                        <span class="recent-chip">Olive oil</span>
+                        <span class="recent-chip">Yogurt</span>
+                        <span class="recent-chip">Spinach</span>
+                      </div>
+                    </div>
+                  </div>
+
+                </div><!-- /mode-grid -->
+
+                <!-- Suggested bundles -->
+                <div class="bundles">
+                  <header class="bundles__head">
+                    <span class="icon"><svg width="14" height="14"><use href="#ic-sparkle"/></svg></span>
+                    <span class="tag tag--ai">Suggested bundles</span>
+                  </header>
+                  <div class="bundles__grid">
+                    <div class="bundle"><div class="bundle__title">Restock essentials</div><div class="bundle__sub">12 items · ~€36</div></div>
+                    <div class="bundle"><div class="bundle__title">Breakfast for the week</div><div class="bundle__sub">8 items · ~€22</div></div>
+                    <div class="bundle"><div class="bundle__title">Tacos for Friday</div><div class="bundle__sub">7 items · ~€18</div></div>
+                    <div class="bundle"><div class="bundle__title">Weekly produce refresh</div><div class="bundle__sub">9 items · ~€14</div></div>
+                  </div>
+                </div>
+
+              </div><!-- /addB-pad -->
+            </div>
+          </div>
+        </div><!-- /artboard -->
+
+        <!-- ▸ B · iPhone ▸ -->
+        <div class="artboard">
+          <span class="artboard__label">B · iPhone · 380 × 800</span>
+          <div class="frame frame--iphone">
+            <div class="frame__inner">
+
+              <div class="status-bar status-bar--phone">
+                <span>9:41</span>
+                <span class="status-bar__indicators">
+                  <svg width="18" height="11"><use href="#ic-signal"/></svg>
+                  <svg width="16" height="11"><use href="#ic-wifi"/></svg>
+                  <svg width="26" height="12"><use href="#ic-battery"/></svg>
+                </span>
+              </div>
+
+              <div style="padding:4px 18px 18px">
+
+                <header style="display:flex;justify-content:space-between;align-items:flex-end">
+                  <div>
+                    <span class="tag">Add</span>
+                    <div style="margin-top:4px"><span class="display" style="font-size:36px">Pick a way</span></div>
+                  </div>
+                  <button class="icon-btn icon-btn--ghost icon-btn--32"><svg width="13" height="13" stroke-width="1.7" stroke="currentColor" fill="none"><use href="#ic-x"/></svg></button>
+                </header>
+
+                <!-- Quick input -->
+                <div style="margin-top:14px">
+                  <div class="ask-bar ask-bar--phone">
+                    <span class="ask-bar__sparkle"><svg width="14" height="14"><use href="#ic-sparkle"/></svg></span>
+                    <span class="ask-bar__placeholder">What should I add?</span>
+                    <button class="icon-btn icon-btn--ink icon-btn--32" style="width:32px;height:32px"><svg width="14" height="14" stroke="#fff" fill="#fff"><use href="#ic-mic"/></svg></button>
+                  </div>
+                </div>
+
+                <!-- Mode list -->
+                <div class="mode-list">
+                  <div class="mode-item mode-item--accent">
+                    <span class="mode-item__icon"><svg width="16" height="16" stroke="#fff" fill="#fff"><use href="#ic-mic"/></svg></span>
+                    <div class="mode-item__body">
+                      <div class="mode-item__title">Voice</div>
+                      <div class="mode-item__sub">Natural language</div>
+                    </div>
+                    <span class="mode-item__chev"><svg width="16" height="16" stroke="currentColor" fill="none" stroke-width="1.7"><use href="#ic-chevron"/></svg></span>
+                  </div>
+
+                  <div class="mode-item">
+                    <span class="mode-item__icon"><svg width="16" height="16" stroke-width="1.7" stroke="currentColor" fill="none"><use href="#ic-barcode"/></svg></span>
+                    <div class="mode-item__body">
+                      <div class="mode-item__title">Barcode</div>
+                      <div class="mode-item__sub">Point at the pack</div>
+                    </div>
+                    <span class="mode-item__chev"><svg width="16" height="16" stroke="currentColor" fill="none" stroke-width="1.7"><use href="#ic-chevron"/></svg></span>
+                  </div>
+
+                  <div class="mode-item">
+                    <span class="mode-item__icon"><svg width="16" height="16" stroke-width="1.7" stroke="currentColor" fill="none"><use href="#ic-camera"/></svg></span>
+                    <div class="mode-item__body">
+                      <div class="mode-item__title">Camera</div>
+                      <div class="mode-item__sub">Recognize the item</div>
+                    </div>
+                    <span class="mode-item__chev"><svg width="16" height="16" stroke="currentColor" fill="none" stroke-width="1.7"><use href="#ic-chevron"/></svg></span>
+                  </div>
+
+                  <div class="mode-item">
+                    <span class="mode-item__icon"><svg width="16" height="16" stroke-width="1.7" stroke="currentColor" fill="none"><use href="#ic-receipt"/></svg></span>
+                    <div class="mode-item__body">
+                      <div class="mode-item__title">Receipt</div>
+                      <div class="mode-item__sub">Snap &amp; import</div>
+                    </div>
+                    <span class="mode-item__chev"><svg width="16" height="16" stroke="currentColor" fill="none" stroke-width="1.7"><use href="#ic-chevron"/></svg></span>
+                  </div>
+
+                  <div class="mode-item">
+                    <span class="mode-item__icon"><svg width="16" height="16" stroke-width="1.7" stroke="currentColor" fill="none"><use href="#ic-routines"/></svg></span>
+                    <div class="mode-item__body">
+                      <div class="mode-item__title">Recent</div>
+                      <div class="mode-item__sub">Usual purchases</div>
+                    </div>
+                    <span class="mode-item__chev"><svg width="16" height="16" stroke="currentColor" fill="none" stroke-width="1.7"><use href="#ic-chevron"/></svg></span>
+                  </div>
+                </div>
+
+                <!-- Bundles -->
+                <div style="margin-top:16px">
+                  <header style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+                    <span class="icon" style="color:var(--ai)"><svg width="12" height="12"><use href="#ic-sparkle"/></svg></span>
+                    <span class="tag tag--ai">Bundles</span>
+                  </header>
+                  <div class="bundles__grid bundles__grid--phone">
+                    <div class="bundle bundle--phone"><div class="bundle__title">Restock essentials</div><div class="bundle__sub">12 items</div></div>
+                    <div class="bundle bundle--phone"><div class="bundle__title">Tacos · Friday</div><div class="bundle__sub">7 items</div></div>
+                    <div class="bundle bundle--phone"><div class="bundle__title">Breakfast week</div><div class="bundle__sub">8 items</div></div>
+                    <div class="bundle bundle--phone"><div class="bundle__title">Produce refresh</div><div class="bundle__sub">9 items</div></div>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+        </div><!-- /artboard -->
+
+      </div>
+    </article>
+
+  </section>
+
+  <footer style="margin-top:120px;padding-top:32px;border-top:1px solid var(--line);color:var(--ink-3);font-family:var(--font-mono);font-size:11px;letter-spacing:0.12em;text-transform:uppercase">
+    LecoLista · hi-fi design canvas · v1
+  </footer>
+
+</main>
+
+<!-- Generate waveform bars (replicates the JSX Wave component) -->
+<script>
+  document.querySelectorAll('[data-wave]').forEach(svg => {
+    const bars = parseInt(svg.dataset.bars || '56', 10);
+    const seed = parseFloat(svg.dataset.seed || '1');
+    const w = parseFloat(svg.getAttribute('width'));
+    const h = parseFloat(svg.getAttribute('height'));
+    svg.setAttribute('viewBox', `0 0 ${bars} ${h}`);
+    svg.setAttribute('preserveAspectRatio', 'none');
+    const ns = 'http://www.w3.org/2000/svg';
+    const color = getComputedStyle(document.documentElement).getPropertyValue('--ai').trim();
+    for (let i = 0; i < bars; i++) {
+      const t = i / bars;
+      const env = Math.pow(Math.sin(t * Math.PI), 0.6);
+      const noise = 0.45 + 0.55 * Math.abs(Math.sin(i * 1.7 * seed) * Math.cos(i * 0.43 * seed));
+      const bh = Math.max(2, env * noise * (h - 4));
+      const rect = document.createElementNS(ns, 'rect');
+      rect.setAttribute('x', i + 0.25);
+      rect.setAttribute('y', (h - bh) / 2);
+      rect.setAttribute('width', '0.5');
+      rect.setAttribute('height', bh);
+      rect.setAttribute('rx', '0.25');
+      rect.setAttribute('fill', color);
+      rect.setAttribute('opacity', '0.9');
+      svg.appendChild(rect);
+    }
+  });
+</script>
+
+</body>
+</html>
