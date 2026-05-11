@@ -2007,6 +2007,9 @@ body::before {
   to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 
+.sheet-root--no-anim .sheet-modal,
+.sheet-root--no-anim .sheet-backdrop { animation: none !important; }
+
 .sheet-modal__head {
   display: flex; align-items: center; justify-content: space-between;
   padding: 18px 22px;
@@ -2033,6 +2036,7 @@ body::before {
     animation: sheet-up 0.24s cubic-bezier(0.2, 0.9, 0.3, 1);
   }
   @keyframes sheet-up { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .sheet-root--no-anim .sheet-modal { animation: none !important; }
 }
 
 /* Sheet tabs */

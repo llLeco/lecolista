@@ -2747,7 +2747,35 @@
       state.view === 'shopping' ? viewShopping() :
       viewLista();
 
-    const sheet =
+    root.innerHTML = `<main class="page">${view}</main>`;
+
+    renderToast();
+    renderSheet();
+
+    // restaurar foco em inputs do PAGE (sheet tem restore próprio)
+    if (focus) {
+      const el = root.querySelector(`[data-input="${focus}"]`);
+      if (el) {
+        el.focus();
+        try { if (sel) el.setSelectionRange(sel.start, sel.end); } catch (e) {}
+      }
+    }
+  }
+
+  // Sheet renderizado fora do #app pra evitar flicker em re-renders.
+  // Estratégia: gera HTML, compara com o último renderizado. Só toca o DOM se mudou.
+  // Restaura focus/seleção/scroll do sheet após substituição.
+  let _lastSheetHTML = '';
+  let _lastSheetKey = null;
+  function renderSheet() {
+    let host = document.getElementById('sheet-host');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'sheet-host';
+      document.body.appendChild(host);
+    }
+
+    const html = !state.sheet ? '' : (
       state.sheet === 'add' ? sheetAdd() :
       state.sheet === 'edit' ? sheetEdit() :
       state.sheet === 'export' ? sheetExport() :
@@ -2762,24 +2790,48 @@
       state.sheet === 'inventory-add' ? sheetInventoryAdd() :
       state.sheet === 'rec-add' ? sheetRecAdd() :
       state.sheet === 'fam-add' ? sheetFamAdd() :
-      '';
+      ''
+    );
 
-    root.innerHTML = `<main class="page">${view}</main>${sheet ? `<div class="sheet-root">${sheet}</div>` : ''}`;
+    // Se o HTML é EXATAMENTE igual, não toca DOM (evita re-trigger da animação sheet-in)
+    if (html === _lastSheetHTML) return;
 
-    renderToast();
+    // Captura foco/seleção/scroll antes de substituir (só se sheet aberto)
+    const activeEl = document.activeElement;
+    const focusKey = activeEl && host.contains(activeEl) ? (activeEl.dataset?.input || activeEl.name) : null;
+    let selStart = null, selEnd = null;
+    if (focusKey && activeEl) {
+      try { selStart = activeEl.selectionStart; selEnd = activeEl.selectionEnd; } catch {}
+    }
+    const sheetBody = host.querySelector('.sheet-modal__body');
+    const scrollTop = sheetBody ? sheetBody.scrollTop : 0;
 
-    // restaurar foco
-    if (focus) {
-      const el = root.querySelector(`[data-input="${focus}"]`);
-      if (el) {
-        el.focus();
-        try { if (sel) el.setSelectionRange(sel.start, sel.end); } catch (e) {}
+    // Se mudou de sheet (key diferente) → permite animação
+    // Se mesmo sheet só com dados internos diferentes → desabilita animação no DOM resultante
+    const newKey = state.sheet ? `${state.sheet}` : null;
+    const sameSheet = newKey && newKey === _lastSheetKey;
+
+    host.innerHTML = html ? `<div class="sheet-root${sameSheet ? ' sheet-root--no-anim' : ''}">${html}</div>` : '';
+
+    _lastSheetHTML = html;
+    _lastSheetKey = newKey;
+
+    // Restaura foco/seleção/scroll
+    if (focusKey) {
+      const newEl = host.querySelector(`[data-input="${focusKey}"], [name="${focusKey}"]`);
+      if (newEl) {
+        newEl.focus();
+        try { if (selStart != null) newEl.setSelectionRange(selStart, selEnd); } catch {}
       }
     }
+    if (scrollTop) {
+      const newBody = host.querySelector('.sheet-modal__body');
+      if (newBody) newBody.scrollTop = scrollTop;
+    }
 
-    // setup câmera se necessário (reanexa stream existente em re-renders)
+    // Setup câmera se necessário (reanexa stream existente em re-renders)
     if (state.sheet === 'add' && state.sheetData?.tab === 'camera') {
-      const v = root.querySelector('#cam-video');
+      const v = host.querySelector('#cam-video');
       if (v) {
         if (_stream) {
           v.srcObject = _stream;
