@@ -2812,10 +2812,11 @@
     const sheetBody = host.querySelector('.sheet-modal__body');
     const scrollTop = sheetBody ? sheetBody.scrollTop : 0;
 
-    // Se mudou de sheet (key diferente) → permite animação
+    // Se mudou de sheet (key diferente, ou sheet acabou de abrir) → permite animação
     // Se mesmo sheet só com dados internos diferentes → desabilita animação no DOM resultante
     const newKey = state.sheet ? `${state.sheet}` : null;
-    const sameSheet = newKey && newKey === _lastSheetKey;
+    const wasOpen = _lastSheetKey !== null && _lastSheetHTML !== '';
+    const sameSheet = newKey && newKey === _lastSheetKey && wasOpen;
 
     host.innerHTML = html ? `<div class="sheet-root${sameSheet ? ' sheet-root--no-anim' : ''}">${html}</div>` : '';
 
