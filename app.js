@@ -301,6 +301,27 @@
   // ────────────────────────────────────────────────────────────
   // 7. Operações de domínio
   // ────────────────────────────────────────────────────────────
+  // ── Auto-fetch de preço via API (mesma origem, /api/v1/price)
+  // Roda em background — não bloqueia o addItem. Atualiza chip quando responde.
+  async function autoFetchPrice(name) {
+    if (!name) return;
+    // Já tem preço salvo? não busca de novo
+    if (getPrice(name)) return;
+    try {
+      const r = await fetch(`/api/v1/price?q=${encodeURIComponent(name)}`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+      });
+      if (!r.ok) return;
+      const j = await r.json();
+      if (j.found && typeof j.price === 'number' && j.price > 0) {
+        await setPrice(name, j.price, { source: j.source || 'auto', link: j.link || null });
+      }
+    } catch (e) {
+      // silent — API offline ou indisponível, segue sem preço
+    }
+  }
+
   async function addItem(name, qty, opts = {}) {
     if (!name || !name.trim()) return;
     const item = {
@@ -320,25 +341,56 @@
     await loadAll();
     broadcast();
     toast(`Adicionado: ${item.name}`);
+    autoFetchPrice(item.name); // dispara em background
     return item;
   }
 
   async function addItems(parsed) {
     if (!parsed?.length) return;
+    const added = [];
     for (const p of parsed) {
+      const name = cap(p.name);
       await dbPut('items', {
         id: uid(),
-        name: cap(p.name), qty: p.qty || '1 un',
+        name, qty: p.qty || '1 un',
         aisle: classifyAisle(p.name),
         by: state.currentUser,
         done: false, ai: null, note: null,
         addedAt: now(), checkedAt: null,
       });
-      await dbPut('history', { id: uid(), name: cap(p.name), qty: p.qty || '1 un', byId: state.currentUser, t: now(), action: 'added' });
+      await dbPut('history', { id: uid(), name, qty: p.qty || '1 un', byId: state.currentUser, t: now(), action: 'added' });
+      added.push(name);
     }
     await loadAll();
     broadcast();
     toast(`${parsed.length} ${parsed.length === 1 ? 'item adicionado' : 'itens adicionados'}`);
+    // Auto-fetch preços em batch (até 25 por request)
+    if (added.length === 1) {
+      autoFetchPrice(added[0]);
+    } else {
+      autoFetchPricesBatch(added);
+    }
+  }
+
+  async function autoFetchPricesBatch(names) {
+    const unknown = names.filter((n) => !getPrice(n));
+    if (!unknown.length) return;
+    try {
+      const r = await fetch('/api/v1/price/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ queries: unknown.slice(0, 25) }),
+      });
+      if (!r.ok) return;
+      const j = await r.json();
+      for (const [normName, res] of Object.entries(j.results || {})) {
+        if (res.found && typeof res.price === 'number' && res.price > 0) {
+          // Acha o nome original (com cap) que bate o query normalizado
+          const original = names.find((n) => n.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim() === normName) || normName;
+          await setPrice(original, res.price, { source: res.source || 'auto', link: res.link || null });
+        }
+      }
+    } catch (e) { /* silent */ }
   }
 
   async function toggleItem(id) {
@@ -2449,11 +2501,11 @@
       case 'search-all-prices': {
         const semPreco = state.items.filter((i) => !i.done && !getPrice(i.name));
         if (!semPreco.length) { toast('Todos com preço já'); break; }
-        // abre os 3 primeiros em abas separadas
-        for (const it of semPreco.slice(0, 3)) {
-          window.open(`https://lista.mercadolivre.com.br/${encodeURIComponent(it.name)}`, '_blank', 'noopener');
-        }
-        toast(`Abri ${Math.min(3, semPreco.length)} buscas. Cole os preços ao voltar.`);
+        toast(`Buscando ${semPreco.length} preços…`);
+        await autoFetchPricesBatch(semPreco.map((i) => i.name));
+        const aindaSem = state.items.filter((i) => !i.done && !getPrice(i.name)).length;
+        const novos = semPreco.length - aindaSem;
+        toast(novos > 0 ? `${novos} preços encontrados` : 'Nenhum preço encontrado');
         break;
       }
       case 'edit':         setState({ sheet: 'edit', sheetData: { id } }); break;
