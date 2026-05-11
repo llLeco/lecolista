@@ -147,8 +147,8 @@
   // 4. IndexedDB
   // ────────────────────────────────────────────────────────────
   const DB = 'lecolista';
-  const VER = 2;
-  const STORES = ['items', 'inventory', 'recurring', 'family', 'history', 'meta', 'prices'];
+  const VER = 3;
+  const STORES = ['items', 'inventory', 'recurring', 'family', 'history', 'meta', 'prices', 'outbox'];
   let _dbP = null;
 
   function getDB() {
@@ -272,6 +272,17 @@
     theme: 'auto',         // 'auto' | 'light' | 'dark'
     notifPerm: typeof Notification !== 'undefined' ? Notification.permission : 'default',
     online: navigator.onLine,
+    // Sync multi-device
+    sync: {
+      spaceId: null,       // se null, modo solo (sem servidor)
+      spaceCode: null,
+      spaceName: null,
+      lastPull: 0,         // timestamp do último cursor de pull (ms server time)
+      status: 'idle',      // 'idle' | 'syncing' | 'error' | 'offline'
+      lastSyncAt: 0,
+      lastError: null,
+      queueLen: 0,         // operações na fila offline aguardando push
+    },
   };
 
   let _renderTimer = null;
@@ -335,9 +346,13 @@
       note: opts.note || null,
       addedAt: now(),
       checkedAt: null,
+      updated_at: now(),
     };
     await dbPut('items', item);
-    await dbPut('history', { id: uid(), name: item.name, qty: item.qty, byId: item.by, t: now(), action: 'added' });
+    await syncItems(item);
+    const hist = { id: uid(), name: item.name, qty: item.qty, byId: item.by, t: now(), action: 'added', updated_at: now() };
+    await dbPut('history', hist);
+    await syncHistory(hist);
     await loadAll();
     broadcast();
     toast(`Adicionado: ${item.name}`);
@@ -350,26 +365,25 @@
     const added = [];
     for (const p of parsed) {
       const name = cap(p.name);
-      await dbPut('items', {
-        id: uid(),
-        name, qty: p.qty || '1 un',
+      const item = {
+        id: uid(), name, qty: p.qty || '1 un',
         aisle: classifyAisle(p.name),
         by: state.currentUser,
         done: false, ai: null, note: null,
-        addedAt: now(), checkedAt: null,
-      });
-      await dbPut('history', { id: uid(), name, qty: p.qty || '1 un', byId: state.currentUser, t: now(), action: 'added' });
+        addedAt: now(), checkedAt: null, updated_at: now(),
+      };
+      await dbPut('items', item);
+      await syncItems(item);
+      const hist = { id: uid(), name, qty: p.qty || '1 un', byId: state.currentUser, t: now(), action: 'added', updated_at: now() };
+      await dbPut('history', hist);
+      await syncHistory(hist);
       added.push(name);
     }
     await loadAll();
     broadcast();
     toast(`${parsed.length} ${parsed.length === 1 ? 'item adicionado' : 'itens adicionados'}`);
-    // Auto-fetch preços em batch (até 25 por request)
-    if (added.length === 1) {
-      autoFetchPrice(added[0]);
-    } else {
-      autoFetchPricesBatch(added);
-    }
+    if (added.length === 1) autoFetchPrice(added[0]);
+    else autoFetchPricesBatch(added);
   }
 
   async function autoFetchPricesBatch(names) {
@@ -397,16 +411,21 @@
     const it = state.items.find((x) => x.id === id);
     if (!it) return;
     const wasDone = !!it.done;
-    const next = { ...it, done: !wasDone, checkedAt: !wasDone ? now() : null };
+    const next = { ...it, done: !wasDone, checkedAt: !wasDone ? now() : null, updated_at: now() };
     await dbPut('items', next);
+    await syncItems(next);
     let invSnap = null;
     if (next.done) {
       const inv = state.inventory.find((i) => i.name.toLowerCase() === next.name.toLowerCase());
       if (inv) {
         invSnap = { ...inv };
-        await dbPut('inventory', { ...inv, stock: 1.0, lastBought: now() });
+        const updInv = { ...inv, stock: 1.0, lastBought: now(), updated_at: now() };
+        await dbPut('inventory', updInv);
+        await syncInventory(updInv);
       }
-      await dbPut('history', { id: uid(), name: next.name, qty: next.qty, byId: state.currentUser, t: now(), action: 'bought' });
+      const hist = { id: uid(), name: next.name, qty: next.qty, byId: state.currentUser, t: now(), action: 'bought', updated_at: now() };
+      await dbPut('history', hist);
+      await syncHistory(hist);
     }
     await loadAll();
     broadcast();
@@ -424,10 +443,13 @@
     const original = state.items.find((x) => x.id === id);
     if (!original) return;
     await dbDel('items', id);
+    await syncItems({ id, ...original }, true); // propaga delete
     await loadAll();
     broadcast();
     pushUndo(`Removido: ${original.name}`, async () => {
-      await dbPut('items', original);
+      const restored = { ...original, updated_at: now() };
+      await dbPut('items', restored);
+      await syncItems(restored);
       await loadAll();
       broadcast();
     });
@@ -435,9 +457,10 @@
   async function updateItem(id, patch) {
     const it = state.items.find((x) => x.id === id);
     if (!it) return;
-    const next = { ...it, ...patch };
+    const next = { ...it, ...patch, updated_at: now() };
     if (patch.name) next.aisle = classifyAisle(patch.name);
     await dbPut('items', next);
+    await syncItems(next);
     await loadAll();
     broadcast();
   }
@@ -445,11 +468,18 @@
   async function clearChecked() {
     const checked = state.items.filter((x) => x.done);
     if (!checked.length) return;
-    for (const it of checked) await dbDel('items', it.id);
+    for (const it of checked) {
+      await dbDel('items', it.id);
+      await syncItems(it, true);
+    }
     await loadAll();
     broadcast();
     pushUndo(`${checked.length} ${checked.length === 1 ? 'comprado removido' : 'comprados removidos'}`, async () => {
-      for (const it of checked) await dbPut('items', it);
+      for (const it of checked) {
+        const restored = { ...it, updated_at: now() };
+        await dbPut('items', restored);
+        await syncItems(restored);
+      }
       await loadAll();
       broadcast();
     });
@@ -479,8 +509,9 @@
     let id = name.toLowerCase().replace(/[^a-zà-ú]/gi,'').slice(0,2);
     if (!id || state.family.some((f) => f.id === id)) id = uid().slice(0,3);
     const pinHash = await hashPin(pin);
-    const member = { id, name: cap(name.trim()), c1: palettes[idx][0], c2: palettes[idx][1], pinHash, createdAt: now() };
+    const member = { id, name: cap(name.trim()), c1: palettes[idx][0], c2: palettes[idx][1], pinHash, createdAt: now(), updated_at: now() };
     await dbPut('family', member);
+    await syncFamily(member);
     await loadAll();
     broadcast();
     return member;
@@ -490,7 +521,9 @@
     const f = state.family.find((x) => x.id === memberId);
     if (!f) return;
     const pinHash = await hashPin(newPin);
-    await dbPut('family', { ...f, pinHash });
+    const next = { ...f, pinHash, updated_at: now() };
+    await dbPut('family', next);
+    await syncFamily(next);
     await loadAll();
     broadcast();
   }
@@ -510,13 +543,16 @@
     const original = state.family.find((f) => f.id === id);
     if (!original) return;
     await dbDel('family', id);
+    await syncFamily(original, true);
     await loadAll();
     if (!state.family.find((f) => f.id === state.currentUser) && state.family.length) {
       setState({ currentUser: state.family[0].id });
     }
     broadcast();
     pushUndo(`Removido: ${original.name}`, async () => {
-      await dbPut('family', original);
+      const restored = { ...original, updated_at: now() };
+      await dbPut('family', restored);
+      await syncFamily(restored);
       await loadAll();
       broadcast();
     });
@@ -525,14 +561,18 @@
   async function updateInv(id, patch) {
     const inv = state.inventory.find((x) => x.id === id);
     if (!inv) return;
-    await dbPut('inventory', { ...inv, ...patch });
+    const next = { ...inv, ...patch, updated_at: now() };
+    await dbPut('inventory', next);
+    await syncInventory(next);
     await loadAll();
     broadcast();
   }
 
   async function addInv({ name, stock = 1, unit = 'un', cadenceDays = 14 }) {
     if (!name?.trim()) return;
-    await dbPut('inventory', { id: uid(), name: cap(name.trim()), stock, unit, cadenceDays, lastBought: now() });
+    const inv = { id: uid(), name: cap(name.trim()), stock, unit, cadenceDays, lastBought: now(), updated_at: now() };
+    await dbPut('inventory', inv);
+    await syncInventory(inv);
     await loadAll();
     broadcast();
   }
@@ -541,10 +581,13 @@
     const original = state.inventory.find((x) => x.id === id);
     if (!original) return;
     await dbDel('inventory', id);
+    await syncInventory(original, true);
     await loadAll();
     broadcast();
     pushUndo(`Removido do estoque: ${original.name}`, async () => {
-      await dbPut('inventory', original);
+      const restored = { ...original, updated_at: now() };
+      await dbPut('inventory', restored);
+      await syncInventory(restored);
       await loadAll(); broadcast();
     });
   }
@@ -552,14 +595,18 @@
   async function toggleRec(id) {
     const r = state.recurring.find((x) => x.id === id);
     if (!r) return;
-    await dbPut('recurring', { ...r, enabled: !r.enabled });
+    const next = { ...r, enabled: !r.enabled, updated_at: now() };
+    await dbPut('recurring', next);
+    await syncRecurring(next);
     await loadAll();
     broadcast();
   }
 
   async function addRec({ name, qty, cadenceDays }) {
     if (!name?.trim()) return;
-    await dbPut('recurring', { id: uid(), name: cap(name.trim()), qty: qty || '1 un', cadenceDays: cadenceDays || 7, day: 'qua', enabled: true });
+    const rec = { id: uid(), name: cap(name.trim()), qty: qty || '1 un', cadenceDays: cadenceDays || 7, day: 'qua', enabled: true, updated_at: now() };
+    await dbPut('recurring', rec);
+    await syncRecurring(rec);
     await loadAll();
     broadcast();
   }
@@ -568,10 +615,13 @@
     const original = state.recurring.find((x) => x.id === id);
     if (!original) return;
     await dbDel('recurring', id);
+    await syncRecurring(original, true);
     await loadAll();
     broadcast();
     pushUndo(`Rotina removida: ${original.name}`, async () => {
-      await dbPut('recurring', original);
+      const restored = { ...original, updated_at: now() };
+      await dbPut('recurring', restored);
+      await syncRecurring(restored);
       await loadAll(); broadcast();
     });
   }
@@ -590,20 +640,26 @@
   async function setPrice(name, price, opts = {}) {
     const id = priceKey(name);
     if (!id) return;
-    await dbPut('prices', {
+    const rec = {
       id, name: cap(String(name).trim()),
       price: Number(price),
       source: opts.source || 'manual',
       link: opts.link || null,
       currency: 'BRL',
       fetchedAt: now(),
-    });
+      updated_at: now(),
+    };
+    await dbPut('prices', rec);
+    await syncPrices(rec);
     await loadAll();
     broadcast();
   }
 
   async function clearPrice(name) {
-    await dbDel('prices', priceKey(name));
+    const id = priceKey(name);
+    const original = state.prices[id];
+    await dbDel('prices', id);
+    if (original) await syncPrices(original, true);
     await loadAll();
     broadcast();
   }
@@ -634,6 +690,234 @@
   function sourceLabel(s) {
     return s === 'ml' ? 'Mercado Livre' : s === 'amazon' ? 'Amazon' : s === 'google' ? 'Google Shopping' : 'Manual';
   }
+
+  // ════════════════════════════════════════════════════════════
+  // SYNC MULTI-DEVICE
+  // ════════════════════════════════════════════════════════════
+  // Cada record local que sincroniza tem updated_at + opcional deleted_at.
+  // Mudanças vão pra "outbox" (fila de push). Loop tenta enviar a cada 3s
+  // se houver itens. Pull roda a cada 10s + após cada push bem-sucedido.
+  // ════════════════════════════════════════════════════════════
+
+  const SYNC_KINDS = ['items', 'family', 'inventory', 'recurring', 'prices', 'history'];
+
+  async function loadSyncMeta() {
+    const m = await dbGet('meta', 'sync').catch(() => null);
+    if (m) {
+      state.sync = { ...state.sync, spaceId: m.spaceId, spaceCode: m.spaceCode, spaceName: m.spaceName, lastPull: m.lastPull || 0 };
+    }
+    await refreshOutboxCount();
+  }
+  async function saveSyncMeta() {
+    await dbPut('meta', {
+      id: 'sync',
+      spaceId: state.sync.spaceId,
+      spaceCode: state.sync.spaceCode,
+      spaceName: state.sync.spaceName,
+      lastPull: state.sync.lastPull,
+    });
+  }
+
+  // Outbox: store dedicado pra registros pendentes de push.
+  async function queuePush(kind, record, isDelete = false) {
+    if (!state.sync.spaceId) return; // modo solo: ignora
+    const outboxId = `${kind}:${record.id}`;
+    await dbPut('outbox', {
+      id: outboxId,
+      kind,
+      record_id: record.id,
+      data: record,
+      updated_at: record.updated_at || now(),
+      deleted_at: isDelete ? (record.deleted_at || now()) : null,
+      queued_at: now(),
+    });
+    refreshOutboxCount();
+    schedulePush();
+  }
+  async function refreshOutboxCount() {
+    const all = await dbAll('outbox').catch(() => []);
+    state.sync.queueLen = all.length;
+  }
+
+  let _pushTimer = null;
+  function schedulePush(delayMs = 400) {
+    if (!state.sync.spaceId) return;
+    if (_pushTimer) return;
+    _pushTimer = setTimeout(async () => {
+      _pushTimer = null;
+      await flushOutbox();
+    }, delayMs);
+  }
+
+  async function flushOutbox() {
+    if (!state.sync.spaceId) return;
+    if (!state.online) return;
+    const pending = await dbAll('outbox').catch(() => []);
+    if (!pending.length) return;
+    setState({ sync: { ...state.sync, status: 'syncing' } });
+    const batch = pending.slice(0, 200);
+    const records = batch.map((p) => ({
+      kind: p.kind,
+      id: p.record_id,
+      data: p.deleted_at ? null : p.data,
+      updated_at: p.updated_at,
+      deleted_at: p.deleted_at || null,
+    }));
+    try {
+      const r = await fetch(`/api/v1/spaces/${state.sync.spaceId}/push`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ records }),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const j = await r.json();
+      // remove da outbox
+      for (const p of batch) await dbDel('outbox', p.id);
+      await refreshOutboxCount();
+      setState({ sync: { ...state.sync, status: 'idle', lastSyncAt: now(), lastError: null } });
+      // Trigger pull pra pegar mudanças de outros devices
+      schedulePull(100);
+      // Se ainda tem fila, processa próximo lote
+      if (pending.length > batch.length) schedulePush(100);
+    } catch (e) {
+      setState({ sync: { ...state.sync, status: 'error', lastError: String(e.message || e) } });
+      // tenta de novo em 10s
+      setTimeout(() => schedulePush(0), 10000);
+    }
+  }
+
+  let _pullTimer = null;
+  function schedulePull(delayMs = 10000) {
+    if (!state.sync.spaceId) return;
+    if (_pullTimer) clearTimeout(_pullTimer);
+    _pullTimer = setTimeout(async () => {
+      _pullTimer = null;
+      await pullChanges();
+      schedulePull(); // re-arma pra rodar de novo
+    }, delayMs);
+  }
+
+  async function pullChanges() {
+    if (!state.sync.spaceId || !state.online) return;
+    try {
+      const since = state.sync.lastPull || 0;
+      const r = await fetch(`/api/v1/spaces/${state.sync.spaceId}/pull?since=${since}`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const j = await r.json();
+      if (j.records && j.records.length) {
+        // Aplica cada record no IDB local
+        for (const rec of j.records) {
+          if (!SYNC_KINDS.includes(rec.kind)) continue;
+          if (rec.deleted_at) {
+            // Soft delete remoto: apaga local
+            await dbDel(rec.kind, rec.id).catch(() => {});
+          } else if (rec.data) {
+            // Last-write-wins: só sobrescreve se updated_at remoto for >= local
+            const local = await dbGet(rec.kind, rec.id).catch(() => null);
+            if (!local || (rec.updated_at >= (local.updated_at || 0))) {
+              const recordData = rec.kind === 'prices'
+                ? rec.data  // prices usa nome como id
+                : { ...rec.data, updated_at: rec.updated_at };
+              await dbPut(rec.kind, recordData);
+            }
+          }
+        }
+        // Recarrega state em memória
+        await loadAll();
+      }
+      state.sync.lastPull = j.cursor || j.server_now || now();
+      await saveSyncMeta();
+      setState({ sync: { ...state.sync, lastSyncAt: now(), status: 'idle', lastError: null } });
+    } catch (e) {
+      setState({ sync: { ...state.sync, status: 'error', lastError: String(e.message || e) } });
+    }
+  }
+
+  // Cria grupo no servidor + ativa sync local
+  async function syncCreateSpace(name, pin) {
+    const r = await fetch('/api/v1/spaces', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, pin: pin || undefined }),
+    });
+    if (!r.ok) throw new Error('Falha ao criar grupo (HTTP ' + r.status + ')');
+    const j = await r.json();
+    state.sync.spaceId = j.id;
+    state.sync.spaceCode = j.code;
+    state.sync.spaceName = j.name || null;
+    state.sync.lastPull = 0;
+    await saveSyncMeta();
+    // Faz initial push de TUDO que já existe local (família, items, etc.)
+    await pushAllLocal();
+    schedulePull();
+    return j;
+  }
+
+  // Entra em grupo existente
+  async function syncJoinSpace(code, pin) {
+    const r = await fetch('/api/v1/spaces/join', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, pin: pin || undefined }),
+    });
+    if (r.status === 401) throw new Error('PIN do grupo incorreto');
+    if (r.status === 404) throw new Error('Grupo não encontrado');
+    if (!r.ok) throw new Error('Falha ao entrar (HTTP ' + r.status + ')');
+    const j = await r.json();
+    state.sync.spaceId = j.id;
+    state.sync.spaceCode = j.code;
+    state.sync.spaceName = j.name || null;
+    state.sync.lastPull = 0;
+    await saveSyncMeta();
+    // Initial pull pra trazer todo o estado do grupo
+    await pullChanges();
+    schedulePull();
+    return j;
+  }
+
+  // Push inicial: manda tudo o que já existe local pro servidor (após criar grupo)
+  async function pushAllLocal() {
+    for (const kind of SYNC_KINDS) {
+      const all = await dbAll(kind).catch(() => []);
+      for (const rec of all) {
+        // Garante que tem updated_at
+        if (!rec.updated_at) {
+          rec.updated_at = now();
+          await dbPut(kind, rec);
+        }
+        await queuePush(kind, rec);
+      }
+    }
+    schedulePush(0);
+  }
+
+  // Sai do grupo (mantém dados locais)
+  async function syncLeaveSpace() {
+    if (_pullTimer) clearTimeout(_pullTimer);
+    if (_pushTimer) clearTimeout(_pushTimer);
+    _pullTimer = _pushTimer = null;
+    state.sync = { spaceId: null, spaceCode: null, spaceName: null, lastPull: 0, status: 'idle', lastSyncAt: 0, lastError: null, queueLen: 0 };
+    await saveSyncMeta();
+    // Limpa outbox
+    const all = await dbAll('outbox').catch(() => []);
+    for (const p of all) await dbDel('outbox', p.id);
+  }
+
+  // Helper pra adicionar updated_at + queuePush em mutações
+  function withSync(kind) {
+    return async (record, isDelete = false) => {
+      const stamped = isDelete
+        ? { ...record, deleted_at: now() }
+        : { ...record, updated_at: now() };
+      await queuePush(kind, stamped, isDelete);
+    };
+  }
+  const syncItems     = withSync('items');
+  const syncFamily    = withSync('family');
+  const syncInventory = withSync('inventory');
+  const syncRecurring = withSync('recurring');
+  const syncPrices    = withSync('prices');
+  const syncHistory   = withSync('history');
 
   // ── Autocomplete (sugestões enquanto digita) ─────────────────
   function getAutocomplete(q) {
@@ -1246,6 +1530,12 @@
           </div>
         </div>
         <div class="hdr__right">
+          ${state.sync.spaceId ? `
+            <button class="hdr__sync hdr__sync--${state.sync.status === 'syncing' ? 'sync' : state.sync.status === 'error' ? 'err' : state.online ? 'ok' : 'off'}"
+              data-act="open-group" title="${state.sync.spaceCode} · ${state.sync.status === 'syncing' ? 'sincronizando' : state.online ? 'sincronizado' : 'offline'}">
+              <span class="hdr__sync-dot"></span>
+            </button>
+          ` : ''}
           ${me
             ? `<button class="hdr__user" data-act="open-family" title="Trocar de usuário · ${escape(me.name)}">${avatar(state.currentUser, 32)}</button>`
             : `<button class="btn btn--ghost btn--sm" data-act="open-family">Entrar</button>`}
@@ -2010,6 +2300,83 @@
     `);
   }
 
+  function sheetGroup() {
+    const s = state.sync;
+    if (s.spaceId) {
+      // Tem grupo ativo — mostra code, status, opção de sair
+      return sheetShell('Grupo da família', `
+        <div class="group-current">
+          <span class="tag tag--ai">Código de convite</span>
+          <div class="group-code">${escape(s.spaceCode || '?')}</div>
+          <p style="color:var(--ink-3);font-size:13px;margin:8px 0 16px">
+            Compartilhe esse código com a família. Quem entrar vê e modifica a mesma lista,
+            estoque, recorrentes e preços. Sync automático.
+          </p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn--ghost btn--sm" data-act="copy-code" data-code="${escape(s.spaceCode || '')}">${icon('plus', 13)}<span>Copiar código</span></button>
+            <button class="btn btn--ghost btn--sm" data-act="sync-pull-now">${icon('arrow-r', 13)}<span>Sincronizar agora</span></button>
+          </div>
+        </div>
+
+        <div class="group-status">
+          <div class="group-status__row">
+            <span class="group-status__label">Estado</span>
+            <span class="group-status__val">${
+              s.status === 'syncing' ? '🔄 sincronizando…'
+              : s.status === 'error'   ? '⚠️ ' + escape(s.lastError || 'erro')
+              : state.online            ? '✅ sincronizado'
+                                        : '◌ offline'
+            }</span>
+          </div>
+          <div class="group-status__row">
+            <span class="group-status__label">Último sync</span>
+            <span class="group-status__val">${s.lastSyncAt ? fmtRel(s.lastSyncAt) : 'nunca'}</span>
+          </div>
+          <div class="group-status__row">
+            <span class="group-status__label">Fila offline</span>
+            <span class="group-status__val">${s.queueLen} ${s.queueLen === 1 ? 'mudança' : 'mudanças'} pendentes</span>
+          </div>
+        </div>
+
+        <div class="form-actions" style="margin-top:18px">
+          <button type="button" class="btn btn--ghost" data-act="leave-group">${icon('x', 13)}<span>Sair do grupo (mantém dados local)</span></button>
+        </div>
+      `);
+    }
+    // Sem grupo — opção criar / entrar
+    return sheetShell('Grupo da família', `
+      <p style="color:var(--ink-2);font-size:14px;margin:0 0 18px;line-height:1.5">
+        Crie um grupo pra sincronizar lista, estoque, perfis e preços entre todos
+        os dispositivos da família em tempo real.
+      </p>
+
+      <form data-form="create-group" class="add-form">
+        <span class="field__label">Criar novo grupo</span>
+        <label class="field"><span class="field__label">Nome do grupo</span>
+          <input class="field__input" name="name" required placeholder="Ex.: Casa Lemos" />
+        </label>
+        <label class="field"><span class="field__label">PIN do grupo (4 dígitos · opcional)</span>
+          <input class="field__input" name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="—" />
+          <span class="field__hint">Quem entrar precisa digitar esse PIN. Sem PIN, basta o código.</span>
+        </label>
+        <button type="submit" class="btn btn--ai btn--lg">${icon('plus', 14)}<span>Criar grupo</span></button>
+      </form>
+
+      <div class="form-divider">ou</div>
+
+      <form data-form="join-group" class="add-form">
+        <span class="field__label">Entrar em grupo existente</span>
+        <label class="field"><span class="field__label">Código de convite</span>
+          <input class="field__input" name="code" required placeholder="ABCD-1234" autocomplete="off" maxlength="9" />
+        </label>
+        <label class="field"><span class="field__label">PIN do grupo (se tiver)</span>
+          <input class="field__input" name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="—" />
+        </label>
+        <button type="submit" class="btn btn--ghost btn--lg">${icon('arrow-r', 14)}<span>Entrar</span></button>
+      </form>
+    `);
+  }
+
   function sheetEditPin() {
     const id = state.sheetData?.id;
     const f = state.family.find((x) => x.id === id);
@@ -2125,6 +2492,7 @@
   // ── Tela de boas-vindas (sem perfis cadastrados) ─────────────
   function viewWelcome() {
     const hasFamily = state.family.length > 0;
+    const hasGroup = !!state.sync.spaceId;
     return `
       <div class="welcome">
         <div class="welcome__brand">
@@ -2132,7 +2500,18 @@
         </div>
         <p class="welcome__lead">${hasFamily
           ? 'Quem está usando agora?'
-          : 'A lista de compras da família — funciona offline, com voz, câmera, estoque e IA preditiva.'}</p>
+          : 'Lista de compras da família — sincroniza entre dispositivos, voz, câmera, estoque, IA preditiva.'}</p>
+
+        ${!hasFamily && !hasGroup ? `
+          <div class="welcome__join">
+            <span class="welcome__join-or">Já tem grupo? Entre com o código:</span>
+            <form class="welcome__join-form" data-form="join-group">
+              <input class="field__input welcome__code-input" name="code" placeholder="ABCD-1234" maxlength="9" autocomplete="off" />
+              <input class="field__input" name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="PIN" style="width:90px" />
+              <button type="submit" class="btn btn--ghost">Entrar</button>
+            </form>
+          </div>
+        ` : ''}
 
         ${hasFamily ? `
           <div class="welcome__profiles">
@@ -2297,6 +2676,10 @@
       </div>
 
       <div class="menu-list" style="margin-top:14px">
+        ${item('open-group', null, 'voice', state.sync.spaceId ? `Grupo · ${escape(state.sync.spaceCode || '')}` : 'Conectar grupo da família',
+          state.sync.spaceId
+            ? (state.sync.status === 'syncing' ? '🔄 sincronizando…' : state.online ? `✅ ${state.sync.queueLen ? state.sync.queueLen + ' pendentes' : 'em sincronia'}` : '◌ offline')
+            : 'Sincronizar entre dispositivos')}
         ${item('toggle-theme',   null, 'sun',     `Tema ${state.theme === 'dark' ? 'escuro' : state.theme === 'light' ? 'claro' : 'automático'}`, 'Toque para alternar')}
         ${state.notifPerm !== 'granted' ? item('enable-notifs', null, 'sparkle', 'Ativar notificações', 'Avisar quando algo acabar') : item('test-notif', null, 'sparkle', 'Notificações ativadas ✓', 'Tocar pra testar')}
         ${!isStandalone && state.canInstall ? item('install-pwa', null, 'arrow-r', 'Instalar app', 'Adiciona à tela de início') : ''}
@@ -2374,6 +2757,7 @@
       state.sheet === 'recipes' ? sheetRecipes() :
       state.sheet === 'pin' ? sheetPin() :
       state.sheet === 'edit-pin' ? sheetEditPin() :
+      state.sheet === 'group' ? sheetGroup() :
       state.sheet === 'inventory-edit' ? sheetInventoryEdit() :
       state.sheet === 'inventory-add' ? sheetInventoryAdd() :
       state.sheet === 'rec-add' ? sheetRecAdd() :
@@ -2619,6 +3003,22 @@
         }
         break;
       }
+      case 'open-group':   setState({ sheet: 'group' }); break;
+      case 'sync-pull-now': await pullChanges(); await flushOutbox(); toast('Sincronizado'); break;
+      case 'copy-code': {
+        const code = target.dataset.code;
+        if (navigator.clipboard && code) {
+          navigator.clipboard.writeText(code).then(() => toast(`Copiado: ${code}`));
+        } else toast(code || '');
+        break;
+      }
+      case 'leave-group':
+        if (confirm('Sair do grupo? Os dados locais ficam intactos, mas você não recebe mais updates.')) {
+          await syncLeaveSpace();
+          toast('Saiu do grupo');
+          setState({ sheet: null });
+        }
+        break;
       case 'set-pin': {
         // Abrir sheet pra setar/trocar PIN do perfil
         setState({ sheet: 'edit-pin', sheetData: { id } });
@@ -2719,6 +3119,29 @@
         toast(`Preço salvo: ${fmtBRL(num)}`);
         break;
       }
+      case 'create-group': {
+        try {
+          const j = await syncCreateSpace(data.name?.trim() || null, data.pin?.trim() || null);
+          toast(`Grupo criado · código ${j.code}`);
+          setState({ sheet: 'group' }); // mostra o code pra copiar
+        } catch (e) { toast(String(e.message || e)); }
+        break;
+      }
+      case 'join-group': {
+        const code = String(data.code || '').toUpperCase().trim();
+        if (!code) { toast('Código obrigatório'); break; }
+        try {
+          const j = await syncJoinSpace(code, data.pin?.trim() || null);
+          toast(`Conectado · ${j.name || j.code}`);
+          // Após pull inicial, currentUser pode ficar inválido se a família veio do servidor
+          await loadAll();
+          if (state.family.length && !state.family.some((f) => f.id === state.currentUser)) {
+            setState({ currentUser: state.family[0].id });
+          }
+          setState({ sheet: null, sheetData: null });
+        } catch (e) { toast(String(e.message || e)); }
+        break;
+      }
     }
   });
 
@@ -2774,8 +3197,20 @@
   });
 
   // Online/offline
-  window.addEventListener('online',  () => { setState({ online: true }); toast('Voltou a ficar online'); });
+  window.addEventListener('online',  () => {
+    setState({ online: true });
+    toast('Voltou a ficar online');
+    if (state.sync.spaceId) { schedulePush(200); pullChanges(); }
+  });
   window.addEventListener('offline', () => { setState({ online: false }); toast('Modo offline — tudo continua salvando'); });
+
+  // Quando reabre a aba após estar oculta, sync imediato
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && state.sync.spaceId && state.online) {
+      pullChanges();
+      schedulePush(200);
+    }
+  });
 
   // PWA install prompt
   let _installPrompt = null;
@@ -2819,6 +3254,12 @@
 
     await loadAll();
     await loadTheme();
+    await loadSyncMeta();
+    if (state.sync.spaceId) {
+      // Sync inicial: pull recente + arranca loop
+      pullChanges().then(() => schedulePull());
+      schedulePush(800); // tenta flushar fila offline residual
+    }
 
     // Query string actions (do shortcut PWA)
     const qs = new URLSearchParams(location.search);

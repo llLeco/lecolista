@@ -3041,6 +3041,94 @@ input[type="range"].field__input { padding: 8px 0; }
 }
 .pin-input { padding: 16px !important; }
 
+/* Indicador de sync no header */
+.hdr__sync {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  margin-right: 4px;
+}
+.hdr__sync-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--ink-4);
+}
+.hdr__sync--ok  .hdr__sync-dot { background: var(--ok); }
+.hdr__sync--err .hdr__sync-dot { background: var(--warn); }
+.hdr__sync--off .hdr__sync-dot { background: var(--ink-4); }
+.hdr__sync--sync .hdr__sync-dot {
+  background: var(--ai);
+  animation: pulse-sync 1s ease-in-out infinite;
+}
+@keyframes pulse-sync {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.7); }
+}
+
+/* Grupo sheet */
+.group-current {
+  background: var(--ai-soft);
+  border: 1px solid var(--ai-ring);
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 14px;
+}
+.group-code {
+  font-family: var(--font-mono);
+  font-size: 32px;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+  color: var(--ai-ink);
+  text-align: center;
+  padding: 8px 0 4px;
+  user-select: all;
+}
+.group-status {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 4px 14px;
+}
+.group-status__row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 0;
+  border-top: 1px solid var(--line-soft);
+}
+.group-status__row:first-child { border-top: none; }
+.group-status__label { color: var(--ink-3); font-size: 13px; }
+.group-status__val { font-size: 13px; color: var(--ink); font-weight: 500; }
+
+/* Welcome join inline (sem família ainda) */
+.welcome__join {
+  background: var(--surface-2);
+  border: 1px dashed var(--line);
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.welcome__join-or {
+  font-size: 12.5px; color: var(--ink-3); font-weight: 500;
+  font-family: var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase;
+}
+.welcome__join-form {
+  display: flex; gap: 6px; align-items: center;
+}
+.welcome__join-form .field__input { flex: 1; padding: 10px 12px; }
+.welcome__code-input { text-transform: uppercase; font-family: var(--font-mono); letter-spacing: 0.08em; }
+
+/* Divider 'ou' */
+.form-divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 22px 0 18px;
+  color: var(--ink-3); font-size: 12px; letter-spacing: 0.06em;
+  font-family: var(--font-mono); text-transform: uppercase;
+}
+.form-divider::before, .form-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--line);
+}
+
 /* Profile tiles (welcome com perfis existentes) */
 .welcome__profiles {
   display: flex;
