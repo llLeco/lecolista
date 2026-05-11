@@ -292,6 +292,12 @@
     _renderTimer = setTimeout(render, 16);
   }
 
+  // Persiste login (no IndexedDB meta) e atualiza state. Use sempre que trocar de perfil.
+  async function setCurrentUser(id) {
+    try { await dbPut('meta', { id: 'currentUser', value: id || null }); } catch {}
+    setState({ currentUser: id || null });
+  }
+
   let channel = null;
   if ('BroadcastChannel' in self) {
     channel = new BroadcastChannel('lecolista');
@@ -546,7 +552,7 @@
     await syncFamily(original, true);
     await loadAll();
     if (!state.family.find((f) => f.id === state.currentUser) && state.family.length) {
-      setState({ currentUser: state.family[0].id });
+      await setCurrentUser(state.family[0].id);
     }
     broadcast();
     pushUndo(`Removido: ${original.name}`, async () => {
@@ -3000,7 +3006,10 @@
       case 'add-suggestion': await addItem(target.dataset.name, target.dataset.qty, { ai: target.dataset.ai }); break;
       case 'add-from-inv': await addItem(target.dataset.name, target.dataset.qty); break;
 
-      case 'set-user':     setState({ currentUser: id, sheet: null }); break;
+      case 'set-user':
+        await setCurrentUser(id);
+        setState({ sheet: null });
+        break;
       case 'remove-fam':   await removeFamily(id); break;
 
       case 'apply-rec': {
@@ -3039,8 +3048,7 @@
       case 'load-demo':
         if (confirm('Carregar dados de exemplo (4 pessoas, lista, estoque)? Útil só pra testar.')) {
           await seedDemo(); await loadAll();
-          if (!state.currentUser && state.family.length) setState({ currentUser: state.family[0].id });
-          toast('Dados de exemplo carregados');
+          toast('Dados de exemplo carregados · escolha seu perfil');
         }
         break;
       case 'select-user': {
@@ -3050,7 +3058,8 @@
         if (f.pinHash) {
           setState({ sheet: 'pin', sheetData: { targetId: id } });
         } else {
-          setState({ currentUser: id, sheet: null });
+          await setCurrentUser(id);
+          setState({ sheet: null });
           toast(`Você é ${f.name}`);
         }
         break;
@@ -3124,7 +3133,7 @@
         if (pin && !/^\d{4}$/.test(pin)) { toast('PIN precisa ter 4 dígitos'); break; }
         const m = await addFamily(data.name, pin || null);
         if (m) {
-          setState({ currentUser: m.id });
+          await setCurrentUser(m.id);
           toast(`Bem-vindo, ${m.name}! 👋`);
         }
         break;
@@ -3134,7 +3143,8 @@
         const ok = await verifyPin(targetId, data.pin);
         if (ok) {
           const f = state.family.find((x) => x.id === targetId);
-          setState({ currentUser: targetId, sheet: null, sheetData: null });
+          await setCurrentUser(targetId);
+          setState({ sheet: null, sheetData: null });
           toast(`Você é ${f.name}`);
         } else {
           setState({ sheetData: { ...state.sheetData, error: true } });
@@ -3184,12 +3194,10 @@
         if (!code) { toast('Código obrigatório'); break; }
         try {
           const j = await syncJoinSpace(code, data.pin?.trim() || null);
-          toast(`Conectado · ${j.name || j.code}`);
-          // Após pull inicial, currentUser pode ficar inválido se a família veio do servidor
+          toast(`Conectado · ${j.name || j.code} · escolha seu perfil`);
           await loadAll();
-          if (state.family.length && !state.family.some((f) => f.id === state.currentUser)) {
-            setState({ currentUser: state.family[0].id });
-          }
+          // Força tela de login após join: zera currentUser pra mostrar perfis do grupo.
+          await setCurrentUser(null);
           setState({ sheet: null, sheetData: null });
         } catch (e) { toast(String(e.message || e)); }
         break;
@@ -3307,6 +3315,13 @@
     await loadAll();
     await loadTheme();
     await loadSyncMeta();
+    // Restaura usuário logado da última sessão (se ainda existe na família)
+    try {
+      const m = await dbGet('meta', 'currentUser');
+      if (m?.value && state.family.some((f) => f.id === m.value)) {
+        state.currentUser = m.value;
+      }
+    } catch {}
     if (state.sync.spaceId) {
       // Sync inicial: pull recente + arranca loop
       pullChanges().then(() => schedulePull());
@@ -3325,8 +3340,7 @@
       await loadAll();
     }
 
-    // Se não tem usuário atual mas tem família, usa o primeiro
-    if (!state.currentUser && state.family.length) state.currentUser = state.family[0].id;
+    // Se não tem currentUser válido, viewWelcome mostra lista de perfis pra escolher.
 
     render();
 
