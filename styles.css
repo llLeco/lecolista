@@ -5,28 +5,6 @@
    Palette: warm cream surfaces, true white cards, amber AI accent.
    ========================================================================== */
 
-[data-theme="dark"] {
-  --bg:         #211c15;
-  --bg2:        #2c251c;
-  --canvas:     #181410;
-  --surface:    #251f17;
-  --surface-2:  #1f1a13;
-  --ink:        #f4efe6;
-  --ink-2:      #d8d1c2;
-  --ink-3:      #a39a87;
-  --ink-4:      #6e6557;
-  --line:       rgba(244, 239, 230, 0.10);
-  --line-soft:  rgba(244, 239, 230, 0.05);
-  --ai-soft:    rgba(194, 132, 58, 0.18);
-  --ai-softest: rgba(194, 132, 58, 0.10);
-  --ai-ring:    rgba(194, 132, 58, 0.40);
-  --ai-ink:     #e9b876;
-  --ok-soft:    rgba(125, 154, 109, 0.18);
-}
-[data-theme="dark"] .toast { background: var(--surface); border: 1px solid var(--line); color: var(--ink); }
-[data-theme="dark"] body::before { display: none; }
-[data-theme="dark"] .price-search--ml .price-search__brand { color: #000; }
-
 :root {
   /* Surfaces */
   --bg:         #f4efe6;
@@ -68,6 +46,28 @@
   --a-1: #deae9a;  --a-2: #b48473;
   --k-1: #b4abc8;  --k-2: #8e85ad;
 }
+
+[data-theme="dark"] {
+  --bg:         #211c15;
+  --bg2:        #2c251c;
+  --canvas:     #181410;
+  --surface:    #251f17;
+  --surface-2:  #1f1a13;
+  --ink:        #f4efe6;
+  --ink-2:      #d8d1c2;
+  --ink-3:      #a39a87;
+  --ink-4:      #6e6557;
+  --line:       rgba(244, 239, 230, 0.10);
+  --line-soft:  rgba(244, 239, 230, 0.05);
+  --ai-soft:    rgba(194, 132, 58, 0.18);
+  --ai-softest: rgba(194, 132, 58, 0.10);
+  --ai-ring:    rgba(194, 132, 58, 0.40);
+  --ai-ink:     #e9b876;
+  --ok-soft:    rgba(125, 154, 109, 0.18);
+}
+[data-theme="dark"] .toast { background: var(--surface); border: 1px solid var(--line); color: var(--ink); }
+[data-theme="dark"] body::before { display: none; }
+[data-theme="dark"] .price-search--ml .price-search__brand { color: #000; }
 
 * { box-sizing: border-box; }
 
@@ -2875,6 +2875,7 @@ input[type="range"].field__input { padding: 8px 0; }
   border: 1px solid var(--line);
   border-radius: 16px;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .menu-item {
@@ -2889,6 +2890,7 @@ input[type="range"].field__input { padding: 8px 0; }
   text-align: left;
   color: var(--ink);
   font-family: var(--font-ui);
+  flex-shrink: 0;
 }
 .menu-item:first-child { border-top: none; }
 .menu-item:hover { background: var(--bg); }
